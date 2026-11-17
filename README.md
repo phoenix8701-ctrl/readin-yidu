@@ -1,8 +1,8 @@
 # ReadIN 译读
 
-在 ReadIN 里读你文献库里的论文，读完的高亮和笔记送回文献库。适用于 Zotero 8–10。
+在 ReadIN 里读你文献库里的论文，读完的高亮和笔记送回文献库。适用于 Zotero 10。
 
-Read the papers in your reference library with [ReadIN](https://readin.cc), then send your highlights and notes back. Works with Zotero 8–10.
+Read the papers in your reference library with [ReadIN](https://readin.cc), then send your highlights and notes back. Works with Zotero 10.
 
 > 这个插件和 Zotero 官方没有关系。Zotero 是 Corporation for Digital Scholarship 的注册商标。
 > This plugin is not affiliated with or endorsed by Zotero. Zotero is a registered trademark of the Corporation for Digital Scholarship.
