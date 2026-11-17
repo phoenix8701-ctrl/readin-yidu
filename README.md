@@ -1,32 +1,71 @@
 # ReadIN 译读
 
-在 ReadIN 里读你文献库里的论文，读完的高亮和笔记送回文献库。适用于 Zotero 10。
+在 Zotero 里点一下，用 ReadIN 读论文：整页中英对照、AI 讲清这篇说了什么；读完的高亮和笔记自动回到 Zotero。
 
-Read the papers in your reference library with [ReadIN](https://readin.cc), then send your highlights and notes back. Works with Zotero 10.
+> **内测中，点这个链接就能用 AI**：[领内测资格](https://beta.anqapdf.app/#ref=cze3sewgik)。不用注册、不用填东西，打开 ReadIN 就自动配好（每月名额有限，领完了下个月再来）。
+> 读论文、高亮、笔记回到 Zotero 不用领也能用。
+
+## 为什么用它
+
+- **整页中英对照**：不用一句一句选。整页翻好，原文和译文对着读；在译文上划一句，原文里对应的那句也一起划上。
+- **「我不想读，告诉我说了啥」**：一句话让 AI 讲清这篇论文说了什么，摘出关键观点，点一下跳回原文那一句。
+- **不用自己弄 API 密钥**：不用去申请 OpenAI、Claude 的密钥，也不用填设置。内测期间点上面的链接就行，正式版登录就能用。
+- **导出思维导图**：AI 把你的高亮和想法整理成一张思维导图，能折叠、能「遮住回想」，发给别人双击就能打开。
+- **随时问 AI**：选中任何一句都能问，讲术语、拆长句、问这一段在全文里起什么作用。ReadIN 在电脑和 iPad 上都能用。
+- **文献不搬家**：Zotero 照旧管文献和引用。在 ReadIN 画的高亮、写的想法变成 Zotero 自己的批注；AI 整理的笔记存成论文下面的一条笔记。
+
+## 三步开始
+
+1. 下载最新的 `readin-yidu-x.y.z.xpi`（在右边的 Releases 里）。
+2. Zotero 菜单「工具 → 插件」，把文件拖进去。
+3. 在 Chrome 里打开 [ReadIN](https://beta.anqapdf.app)，右上角选「文献」，书架上点「连接 Zotero」。Chrome 会问一次能不能访问这台电脑上的其他应用，点「允许」。
+
+之后在 Zotero 里右键一篇论文，选「在 ReadIN 打开」；或者在 Zotero 的 PDF 阅读器顶栏点「ReadIN」。
+
+## 要知道的
+
+- **两边都要开着**：ReadIN 和 Zotero 在你自己的电脑上直接连，不经过网络，所以要同时开着、在同一台电脑上。Zotero 里新画的高亮，下次在 ReadIN 打开这篇时带过来。
+- **支持**：Zotero 10；电脑上的 Chrome。
+- **隐私**：插件本身**不连互联网**，只回答 ReadIN 自己的网页，别的网站一律拒绝；代码开源、不混淆、没有统计。用 AI 功能时，你要翻译或提问的文字会经过 ReadIN 的服务发给 AI。
+- **收费**：插件免费。ReadIN 正式版有免费额度，用得多可以升级。
+
+## 想聊聊
+
+用着有问题、有想法，都可以找我：
+
+- 微信：扫下面的二维码
+- 邮箱：Phoenix@anqalabs.org
+
+<img src="docs/wechat-qr.jpg" alt="微信二维码" width="200">
+
+ReadIN 里左下角的「吐槽一下」也能直接写给我，我在后台看得到、会回复。
 
 > 这个插件和 Zotero 官方没有关系。Zotero 是 Corporation for Digital Scholarship 的注册商标。
+
+---
+
+## English
+
+**Read your Zotero papers in ReadIN: full-page side-by-side translation, AI that tells you what a paper says, and your highlights and notes flow back into Zotero.**
+
+> **In beta — one click to try the AI features**: [get beta access](https://beta.anqapdf.app/#ref=cze3sewgik). No sign-up: ReadIN opens with AI ready (limited places each month). Reading, highlighting and syncing back to Zotero work without it.
+
+- **Full-page side-by-side translation**: no selecting sentence by sentence. Highlight a sentence in the translation and the matching sentence in the original is highlighted too.
+- **"I don't want to read it, tell me what it says"**: AI explains the paper and pulls out key points; click one to jump to the sentence.
+- **No API keys to set up**: no OpenAI or Claude keys, no settings. Use the link above during the beta; sign in once it launches.
+- **Mind map export**: AI turns your highlights and thoughts into a foldable mind map you can share.
+- **Ask AI anywhere**: select any sentence and ask. ReadIN works on desktop and iPad.
+- **Your library stays in Zotero**: highlights and notes become native Zotero annotations and a child note.
+
+**Install**: download the `.xpi` from Releases, drag it into Zotero's Tools → Plugins, then open [ReadIN](https://beta.anqapdf.app) in Chrome, switch to Literature mode and click "Connect Zotero".
+
+**Contact**: Phoenix@anqalabs.org, or "Feedback" at the bottom left of ReadIN.
+
+**Privacy**: the plugin makes no internet requests. It answers only ReadIN's own pages on your computer. Open source (AGPL-3.0), no obfuscation, no tracking.
+
 > This plugin is not affiliated with or endorsed by Zotero. Zotero is a registered trademark of the Corporation for Digital Scholarship.
 
-## 能做什么
-
-- **在 ReadIN 打开**：右键一篇论文，或者点 PDF 阅读器顶栏的「ReadIN」按钮。
-- **文献不用搬家**：ReadIN 直接看到你的分类和论文，不导入、不复制文件。
-- **送回去**：在 ReadIN 画的高亮和写的随想，变成文献库里原生的高亮；AI 整理的笔记存成论文下面的一条笔记。
-- 写论文照旧用文献库插引用。
-
-## 隐私
-
-这个版本**不连互联网**。它只在你自己的电脑上开几个入口，只回答 ReadIN 自己的网页（beta.anqapdf.app、cn-beta.anqapdf.app、anqapdf.app、readin.cc），别的网站一律拒绝。代码不混淆、没有统计。
-
-This version makes **no internet requests**. It opens a few local endpoints on your own computer that answer only ReadIN's own pages; every other website is refused. No obfuscation, no tracking.
-
-## 安装
-
-1. 下载 `readin-yidu-x.y.z.xpi`。
-2. 文献库软件里打开「工具 → 插件」，把文件拖进去。
-3. 在 ReadIN 的文献模式里点「连接」。Chrome 会问一次是否允许访问这台电脑上的其他应用，点「允许」。
-
-用的时候文献库软件要开着。
+---
 
 ## 开发
 
@@ -43,4 +82,4 @@ This version makes **no internet requests**. It opens a few local endpoints on y
 
 ## 许可证
 
-AGPL-3.0。插件免费、开源；第二步会加上用 ReadIN 账户额度的 AI 功能，收费判断都在 ReadIN 的服务器上，插件里没有任何密钥。
+AGPL-3.0。插件免费、开源；插件里没有任何密钥，也不做收费判断。
