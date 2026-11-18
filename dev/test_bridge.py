@@ -192,6 +192,13 @@ def main():
         gone = z.eval('return Zotero.Reader._registeredListeners.filter((l) => l.pluginID === "yidu@readin.cc").length')
         check("after disabling: reader button gone", gone == 0, gone)
 
+    print("never connected, in mainland China's time zone: open the mainland version (v0.1.2)")
+    with TestZotero(port=23149, tz="Asia/Shanghai") as cn:
+        check("Asia/Shanghai: default is the mainland site", cn.ping["site"] == "https://cn-beta.anqapdf.app", cn.ping)
+        cn.call("POST", "/readin/hello", {})
+        status, body = cn.call("GET", "/readin/ping")
+        check("Asia/Shanghai: after connecting from the international site, open that one", body["site"] == "https://beta.anqapdf.app", body)
+
     print(f"\n{'all passed' if not failures else str(len(failures)) + ' failed'} in {time.time() - started:.0f} s")
     sys.exit(1 if failures else 0)
 

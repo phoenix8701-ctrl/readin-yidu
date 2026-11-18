@@ -25,8 +25,9 @@ ORIGIN = "https://beta.anqapdf.app"
 
 
 class TestZotero:
-    def __init__(self, port=23139, app="/Applications/Zotero.app", test_origins=""):
+    def __init__(self, port=23139, app="/Applications/Zotero.app", test_origins="", tz=None):
         self.port = port
+        self.tz = tz  # e.g. "Asia/Shanghai": start the test Zotero in another time zone
         self.binary = str(Path(app) / "Contents" / "MacOS" / "zotero")
         self.test_origins = test_origins
         self.base = f"http://127.0.0.1:{port}"
@@ -67,7 +68,7 @@ class TestZotero:
         (profile / "user.js").write_text(
             "".join(f"user_pref({json.dumps(k)}, {json.dumps(v)});\n" for k, v in prefs.items())
         )
-        env = dict(os.environ, MOZ_HEADLESS="1")
+        env = dict(os.environ, MOZ_HEADLESS="1", **({"TZ": self.tz} if self.tz else {}))
         self.log = open(self.tmp / "zotero.log", "w")
         self.proc = subprocess.Popen(
             [self.binary, "-no-remote", "-profile", str(profile), "-ZoteroDebugText"],

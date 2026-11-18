@@ -17,6 +17,10 @@ ReadINYidu = {
     "https://www.readin.cc",
   ],
   DEFAULT_SITE: "https://beta.anqapdf.app",
+  CN_SITE: "https://cn-beta.anqapdf.app",
+  // Time zones in mainland China: before the first connection, open the mainland version there
+  // (the international version's AI can't be reached from mainland China).
+  CN_ZONES: ["Asia/Shanghai", "Asia/Chongqing", "Asia/Chungking", "Asia/Harbin", "Asia/Urumqi", "Asia/Kashgar", "PRC"],
 
   STRINGS: {
     open: { zh: "在 ReadIN 打开", en: "Open in ReadIN" },
@@ -52,10 +56,23 @@ ReadINYidu = {
     return [...this.ORIGINS, ...extra];
   },
 
-  // Which ReadIN to open: the one that last connected (international or mainland), else the default.
+  // Which ReadIN to open: the one that last connected (international or mainland), else by time zone.
   site() {
     const site = this.pref("site", "");
-    return this.allowedOrigins().includes(site) && site.startsWith("http") ? site : this.DEFAULT_SITE;
+    return this.allowedOrigins().includes(site) && site.startsWith("http") ? site : this.defaultSite();
+  },
+
+  // Never connected yet: the mainland version in mainland China's time zones, the international one elsewhere.
+  defaultSite(zone = null) {
+    let tz = zone;
+    if (tz === null) {
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      } catch (e) {
+        tz = "";
+      }
+    }
+    return this.CN_ZONES.includes(tz) ? this.CN_SITE : this.DEFAULT_SITE;
   },
 
   t(key) {
