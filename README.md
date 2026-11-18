@@ -3,6 +3,7 @@
 在 Zotero 里点一下，用 ReadIN 读论文：整页中英对照、AI 讲清这篇说了什么；读完的高亮和笔记自动回到 Zotero。
 
 > **内测中，点这个链接就能用 AI**：[领内测资格](https://beta.anqapdf.app/#ref=cze3sewgik)。不用注册、不用填东西，打开 ReadIN 就自动配好（每月名额有限，领完了下个月再来）。
+> **在中国大陆？** 用大陆版：[领大陆版内测资格](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero)（AI 用 DeepSeek，在大陆能直接用）。
 > 读论文、高亮、笔记回到 Zotero 不用领也能用。
 
 ![演示：Zotero 里打开 → 整页中英对照 → 在译文上划线，原文跟着划 →「我不想读」→ 高亮回到 Zotero](docs/demo.gif)
@@ -18,16 +19,16 @@
 
 ## 三步开始
 
-1. 下载最新的 `readin-yidu-x.y.z.xpi`（在右边的 Releases 里）。
+1. 下载最新的 `readin-yidu-x.y.z.xpi`（在右边的 Releases 里）。在中国大陆从这里下更快：[readin-yidu.xpi](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi)。
 2. Zotero 菜单「工具 → 插件」，把文件拖进去。
-3. 在 Chrome 里打开 [ReadIN](https://beta.anqapdf.app)，右上角选「文献」，书架上点「连接 Zotero」。Chrome 会问一次能不能访问这台电脑上的其他应用，点「允许」。
+3. 在 Chrome 里打开 ReadIN（[国际版](https://beta.anqapdf.app)；在中国大陆用[大陆版](https://cn-beta.anqapdf.app)），右上角选「文献」，书架上点「连接 Zotero」。Chrome 会问一次能不能访问这台电脑上的其他应用，点「允许」。
 
 之后在 Zotero 里右键一篇论文，选「在 ReadIN 打开」；或者在 Zotero 的 PDF 阅读器顶栏点「ReadIN」。
 
 ## 要知道的
 
 - **两边都要开着**：ReadIN 和 Zotero 在你自己的电脑上直接连，不经过网络，所以要同时开着、在同一台电脑上。Zotero 里新画的高亮，下次在 ReadIN 打开这篇时带过来。
-- **支持**：Zotero 10；电脑上的 Chrome。
+- **支持**：Zotero 10；电脑上的 Chrome。国际版的 AI 用 Claude，大陆版用 DeepSeek；在中国大陆请用大陆版（插件在大陆的时区会默认打开大陆版）。
 - **隐私**：插件本身**不连互联网**，只回答 ReadIN 自己的网页，别的网站一律拒绝；代码开源、不混淆、没有统计。用 AI 功能时，你要翻译或提问的文字会经过 ReadIN 的服务发给 AI。
 - **收费**：插件免费。ReadIN 正式版有免费额度，用得多可以升级。
 
@@ -59,7 +60,7 @@ ReadIN 里左下角的「吐槽一下」也能直接写给我，我在后台看�
 - **Ask AI anywhere**: select any sentence and ask. ReadIN works on desktop and iPad.
 - **Your library stays in Zotero**: highlights and notes become native Zotero annotations and a child note.
 
-**Install**: download the `.xpi` from Releases, drag it into Zotero's Tools → Plugins, then open [ReadIN](https://beta.anqapdf.app) in Chrome, switch to Literature mode and click "Connect Zotero".
+**Install**: download the `.xpi` from Releases, drag it into Zotero's Tools → Plugins, then open [ReadIN](https://beta.anqapdf.app) in Chrome, switch to Literature mode and click "Connect Zotero". In mainland China, use the [China version](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero) (AI by DeepSeek) and [download the plugin here](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi).
 
 **Contact**: Phoenix@anqalabs.org, or "Feedback" at the bottom left of ReadIN.
 
