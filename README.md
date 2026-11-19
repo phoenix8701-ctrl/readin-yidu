@@ -17,13 +17,20 @@
 - **随时问 AI**：选中任何一句都能问，讲术语、拆长句、问这一段在全文里起什么作用。ReadIN 在电脑和 iPad 上都能用。
 - **文献不搬家**：Zotero 照旧管文献和引用。在 ReadIN 画的高亮、写的想法变成 Zotero 自己的批注；AI 整理的笔记存成论文下面的一条笔记。
 
-## 三步开始
+## 三步装好
 
-1. 下载最新的 `readin-yidu-x.y.z.xpi`（在右边的 Releases 里）。在中国大陆从这里下更快：[readin-yidu.xpi](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi)。
-2. Zotero 菜单「工具 → 插件」，把文件拖进去。
-3. 在 Chrome 里打开 ReadIN（[国际版](https://beta.anqapdf.app)；在中国大陆用[大陆版](https://cn-beta.anqapdf.app)），右上角选「文献」，书架上点「连接 Zotero」。Chrome 会问一次能不能访问这台电脑上的其他应用，点「允许」。
+1. **下载插件**：[点这里下载](https://readin.cc/yidu/readin-yidu.xpi)，电脑的「下载」文件夹里会多一个 `readin-yidu.xpi` 文件。在中国大陆从[这里下载](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi)更快。
+2. **拖进 Zotero**：打开 Zotero，点菜单「工具 → 插件」，把刚下载的文件拖进弹出来的窗口。列表里出现「ReadIN 译读」，就装好了。
+   找不到「工具」？Mac 上它在屏幕最顶上那一排菜单里；Windows 上在 Zotero 窗口的顶上。
+3. **打开 ReadIN**：用 Chrome 点[打开 ReadIN（AI 已配好）](https://beta.anqapdf.app/#ref=cze3sewgik)；在中国大陆点[打开大陆版](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero)。点最上面的「连接 Zotero」；Chrome 问能不能访问本机网络，点「允许」。
+   以前用过 ReadIN？右上角选「文献」，书架上点「连接 Zotero」。
 
-之后在 Zotero 里右键一篇论文，选「在 ReadIN 打开」；或者在 Zotero 的 PDF 阅读器顶栏点「ReadIN」。
+**装好以后，两种方法都能打开一篇论文：**
+
+- 在文库里**右键**一篇论文，选「在 ReadIN 打开」；
+- 已经在 Zotero 里看这篇论文了？直接点顶栏右边的「**ReadIN**」。
+
+读的时候 Zotero 要开着。
 
 ## 要知道的
 
@@ -60,7 +67,13 @@ ReadIN 里左下角的「吐槽一下」也能直接写给我，我在后台看�
 - **Ask AI anywhere**: select any sentence and ask. ReadIN works on desktop and iPad.
 - **Your library stays in Zotero**: highlights and notes become native Zotero annotations and a child note.
 
-**Install**: download the `.xpi` from Releases, drag it into Zotero's Tools → Plugins, then open [ReadIN](https://beta.anqapdf.app) in Chrome, switch to Literature mode and click "Connect Zotero". In mainland China, use the [China version](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero) (AI by DeepSeek) and [download the plugin here](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi).
+**Set up in three steps**:
+
+1. [Download the plugin](https://readin.cc/yidu/readin-yidu.xpi). A file called `readin-yidu.xpi` lands in your Downloads folder.
+2. Open Zotero, choose Tools → Plugins from the menu, and drag the file into the window. When "ReadIN 译读" shows up in the list, it's installed.
+3. In Chrome, [open ReadIN with AI ready](https://beta.anqapdf.app/#ref=cze3sewgik). Click "Connect Zotero" at the top; when Chrome asks about your local network, click Allow.
+
+Then open a paper either way: right-click it in your library and choose "Open in ReadIN", or, if you're already reading it in Zotero, click "ReadIN" at the right of the toolbar. In mainland China, use the [China version](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero) (AI by DeepSeek) and [download the plugin here](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi).
 
 **Contact**: Phoenix@anqalabs.org, or "Feedback" at the bottom left of ReadIN.
 
