@@ -10,7 +10,8 @@
 // - Zotero's server can only send text, so PDF bytes travel as base64url.
 
 ReadINYidu.bridge = {
-  API: 1,
+  API: 2, // 2 (v0.2.0): translated PDFs saved back as attachments
+  TAG: "ReadIN 译文",
   paths: [],
 
   start() {
@@ -35,6 +36,10 @@ ReadINYidu.bridge = {
     post("/readin/annotations/save", (body) => this.saveAnnotation(body));
     post("/readin/annotations/delete", (body) => this.deleteAnnotations(body));
     post("/readin/notes/save", (body) => this.saveNote(body));
+    // v0.2.0: ReadIN's translated PDF goes back under the same paper
+    get("/readin/translations", (q) => this.translations(q.get("key")));
+    post("/readin/attach", (body) => this.attach(body));
+    post("/readin/open", (body) => this.open(body));
   },
 
   stop() {
@@ -215,6 +220,80 @@ ReadINYidu.bridge = {
     }
     if (ids.length) await Zotero.Items.trashTx(ids);
     return { trashed };
+  },
+
+  // The paper a translated PDF belongs under: the regular item, or a standalone PDF itself.
+  paperOf(key) {
+    const Y = ReadINYidu;
+    const item = Y.item(key);
+    return Y.isPDF(item) && item.parentItem ? item.parentItem : item;
+  },
+
+  // Translated PDFs ReadIN saved earlier (tagged "ReadIN 译文"), newest first.
+  translationsUnder(paper) {
+    const ids = paper.isRegularItem() ? paper.getAttachments() : [];
+    return ids
+      .map((id) => Zotero.Items.get(id))
+      .filter((a) => a && !a.deleted && a.hasTag(this.TAG))
+      .sort((a, b) => (b.dateAdded > a.dateAdded ? 1 : -1));
+  },
+
+  translations(key) {
+    const items = this.translationsUnder(this.paperOf(key)).map((a) => ({
+      key: a.key, title: a.getField("title"), filename: a.attachmentFilename, dateAdded: Zotero.Date.sqlToISO8601(a.dateAdded),
+    }));
+    return { items };
+  },
+
+  // files: [{ name, title, base64url }]; replace: keys of earlier translations to move to the trash.
+  async attach({ parentKey, files, replace }) {
+    const Y = ReadINYidu;
+    const paper = this.paperOf(parentKey);
+    if (!Array.isArray(files) || !files.length || files.length > 4) throw this.bad("files must be a list of 1-4");
+    const added = [];
+    for (const f of files) {
+      if (!f || typeof f.base64url !== "string" || !f.base64url) throw this.bad("file has no data");
+      const name = String(f.name || "ReadIN.pdf").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").slice(0, 150);
+      const bytes = new Uint8Array(ChromeUtils.base64URLDecode(f.base64url, { padding: "ignore" }));
+      if (bytes.length < 5 || String.fromCharCode(...bytes.subarray(0, 5)) !== "%PDF-") throw this.bad("not a PDF");
+      const dir = PathUtils.join(Zotero.getTempDirectory().path, "readin-" + Zotero.Utilities.randomString(8));
+      await IOUtils.makeDirectory(dir);
+      const path = PathUtils.join(dir, name.toLowerCase().endsWith(".pdf") ? name : name + ".pdf");
+      try {
+        await IOUtils.write(path, bytes);
+        const options = { file: path, contentType: "application/pdf", title: String(f.title || name).slice(0, 300) };
+        if (paper.isRegularItem()) {
+          options.parentItemID = paper.id;
+        } else {
+          options.libraryID = Y.libraryID();
+          options.collections = paper.getCollections();
+        }
+        const att = await Zotero.Attachments.importFromFile(options);
+        att.addTag(this.TAG);
+        await att.saveTx();
+        added.push({ key: att.key, title: att.getField("title"), filename: att.attachmentFilename });
+      } finally {
+        await IOUtils.remove(dir, { recursive: true, ignoreAbsent: true });
+      }
+    }
+    // Only earlier ReadIN translations under this paper may be replaced; they go to Zotero's trash.
+    const mine = new Map(this.translationsUnder(paper).map((a) => [a.key, a]));
+    const ids = (Array.isArray(replace) ? replace : []).map((k) => mine.get(k)).filter((a) => a && !added.some((x) => x.key === a.key)).map((a) => a.id);
+    if (ids.length) await Zotero.Items.trashTx(ids);
+    return { items: added, trashed: ids.length };
+  },
+
+  // Open an attachment in Zotero's own reader and bring Zotero to the front.
+  async open({ key }) {
+    const att = ReadINYidu.item(key);
+    if (!ReadINYidu.isPDF(att)) throw this.bad("not a PDF attachment");
+    await Zotero.Reader.open(att.id);
+    try {
+      Zotero.getMainWindow()?.focus();
+    } catch (e) {
+      // no window (headless test Zotero)
+    }
+    return { ok: true };
   },
 
   async saveNote({ parentKey, noteKey, html }) {

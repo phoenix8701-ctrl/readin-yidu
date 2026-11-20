@@ -16,6 +16,7 @@
 - **导出思维导图**：AI 把你的高亮和想法整理成一张思维导图，能折叠、能「遮住回想」，发给别人双击就能打开。
 - **随时问 AI**：选中任何一句都能问，讲术语、拆长句、问这一段在全文里起什么作用。ReadIN 在电脑和 iPad 上都能用。
 - **文献不搬家**：Zotero 照旧管文献和引用。在 ReadIN 画的高亮、写的想法变成 Zotero 自己的批注；AI 整理的笔记存成论文下面的一条笔记。
+- **译文存回 Zotero**：翻译过的论文一键导出成译文 PDF（版式和原文一样，图表公式都不动），也可以要中英对照 PDF，存成这篇论文下面的附件，在 Zotero 里就能读、能批注。
 
 ## 三步装好
 
@@ -66,6 +67,7 @@ ReadIN 里左下角的「吐槽一下」也能直接写给我，我在后台看�
 - **Mind map export**: AI turns your highlights and thoughts into a foldable mind map you can share.
 - **Ask AI anywhere**: select any sentence and ask. ReadIN works on desktop and iPad.
 - **Your library stays in Zotero**: highlights and notes become native Zotero annotations and a child note.
+- **Translated PDF back into Zotero**: export a translated paper as a PDF with the original layout (figures and formulas untouched), or a side-by-side PDF, saved as an attachment under the same paper.
 
 **Set up in three steps**:
 

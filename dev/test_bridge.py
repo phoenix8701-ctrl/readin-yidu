@@ -34,7 +34,7 @@ def main():
 
         print("who may connect")
         status, body = z.call("GET", "/readin/ping")
-        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 1, body)
+        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 2, body)
         check("answer allows that page (CORS)", z.last_headers.get("Access-Control-Allow-Origin") == "https://beta.anqapdf.app", z.last_headers)
         for origin in ["https://cn-beta.anqapdf.app", "https://readin.cc"]:
             status, _ = z.call("GET", "/readin/ping", origin=origin)
@@ -172,6 +172,37 @@ def main():
         check("user trashed our note -> a new one is made", status == 200 and body["key"] != note_key, body)
         status, body = z.call("POST", "/readin/notes/save", {"parentKey": notes["pdf"], "html": html})
         check("refuse a note under a PDF", status == 400, (status, body))
+
+        print("translated PDFs back into Zotero (v0.2.0)")
+        pdf_bytes = sorted(TEST_PDFS.glob("*.pdf"))[0].read_bytes()
+        b64 = base64.urlsafe_b64encode(pdf_bytes).decode().rstrip("=")
+        status, body = z.call("GET", f"/readin/translations?key={notes['item']}")
+        check("no translations yet", status == 200 and body == {"items": []}, body)
+        status, body = z.call("POST", "/readin/attach", {"parentKey": notes["pdf"], "files": [{"name": "Notes（中文译文）.pdf", "title": "Notes（中文译文）", "base64url": b64}]})
+        check("attach a translated PDF (given the PDF's key, it goes under the paper)", status == 200 and len(body.get("items", [])) == 1, (status, body))
+        first = body["items"][0]["key"] if status == 200 else ""
+        info = z.eval(f"""
+          const a = Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{first}");
+          const path = await a.getFilePathAsync();
+          return {{ parent: a.parentItem.key, title: a.getField("title"), tag: a.hasTag("ReadIN 译文"), pdf: a.isPDFAttachment(), size: (await IOUtils.read(path)).length }};
+        """)
+        check("saved as a child PDF with title and tag, same bytes", info == {"parent": notes["item"], "title": "Notes（中文译文）", "tag": True, "pdf": True, "size": len(pdf_bytes)}, info)
+        status, body = z.call("GET", f"/readin/translations?key={notes['item']}")
+        check("translations lists it", [i["key"] for i in body["items"]] == [first], body)
+        status, body = z.call("POST", "/readin/attach", {"parentKey": notes["item"], "replace": [first, notes["pdf"]], "files": [
+            {"name": "Notes（中文译文）.pdf", "title": "Notes（中文译文）", "base64url": b64},
+            {"name": "Notes（中英对照）.pdf", "title": "Notes（中英对照）", "base64url": b64}]})
+        newer = [i["key"] for i in body.get("items", [])]
+        status2, listed = z.call("GET", f"/readin/translations?key={notes['item']}")
+        original_ok = z.eval(f'return !Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{notes["pdf"]}").deleted')
+        check("save again replacing the earlier one: old one in the trash, the original PDF untouched (not ours)", status == 200 and body.get("trashed") == 1
+              and sorted(i["key"] for i in listed["items"]) == sorted(newer) and original_ok, (body, listed, original_ok))
+        status, body = z.call("POST", "/readin/attach", {"parentKey": notes["item"], "files": [{"name": "x.pdf", "base64url": base64.urlsafe_b64encode(b"hello world").decode()}]})
+        check("refuse something that is not a PDF", status == 400, (status, body))
+        status, body = z.call("POST", "/readin/attach", {"parentKey": notes["item"], "files": []})
+        check("refuse an empty list", status == 400, (status, body))
+        status, body = z.call("POST", "/readin/open", {"key": newer[0] if newer else ""})
+        check("open in Zotero's reader", status == 200 and body.get("ok") is True, (status, body))
 
         print("menu and reader button")
         found = z.eval("""
