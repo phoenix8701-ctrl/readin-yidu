@@ -10,7 +10,7 @@
 // - Zotero's server can only send text, so PDF bytes travel as base64url.
 
 ReadINYidu.bridge = {
-  API: 2, // 2 (v0.2.0): translated PDFs saved back as attachments
+  API: 3, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update)
   TAG: "ReadIN 译文",
   paths: [],
 
@@ -21,7 +21,7 @@ ReadINYidu.bridge = {
 
     get("/readin/ping", () => ({
       ok: true, plugin: "readin-yidu", version: Y.version, api: this.API, zotero: Zotero.version, site: Y.site(),
-      menu: Boolean(Y.ui.menuID),
+      menu: Boolean(Y.ui.menuID), update: true,
     }));
     // ReadIN says hello when it connects, so "Open in ReadIN" opens the same ReadIN (international or mainland).
     post("/readin/hello", (body, req) => {
@@ -40,6 +40,8 @@ ReadINYidu.bridge = {
     get("/readin/translations", (q) => this.translations(q.get("key")));
     post("/readin/attach", (body) => this.attach(body));
     post("/readin/open", (body) => this.open(body));
+    // v0.3.0: ReadIN found the plugin too old → update now through Zotero's add-on manager (updater.js)
+    post("/readin/update", () => Y.updater.check({ manual: true }));
   },
 
   stop() {

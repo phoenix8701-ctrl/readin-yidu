@@ -25,8 +25,10 @@ ORIGIN = "https://beta.anqapdf.app"
 
 
 class TestZotero:
-    def __init__(self, port=23139, app="/Applications/Zotero.app", test_origins="", tz=None):
+    def __init__(self, port=23139, app="/Applications/Zotero.app", test_origins="", tz=None, xpi=None, prefs=None):
         self.port = port
+        self.xpi = xpi  # install this .xpi instead of the source folder (test_update.py builds small ones)
+        self.extra_prefs = prefs or {}
         self.tz = tz  # e.g. "Asia/Shanghai": start the test Zotero in another time zone
         self.binary = str(Path(app) / "Contents" / "MacOS" / "zotero")
         self.test_origins = test_origins
@@ -46,7 +48,9 @@ class TestZotero:
         (profile / "extensions").mkdir(parents=True)
         data.mkdir()
         # YIDU_XPI=dist/readin-yidu-x.y.z.xpi tests the packaged file instead of the source folder.
-        if os.environ.get("YIDU_XPI"):
+        if self.xpi:
+            shutil.copy(self.xpi, profile / "extensions" / "yidu@readin.cc.xpi")
+        elif os.environ.get("YIDU_XPI"):
             shutil.copy(REPO / os.environ["YIDU_XPI"], profile / "extensions" / "yidu@readin.cc.xpi")
         else:
             (profile / "extensions" / "yidu@readin.cc").write_text(str(REPO))
@@ -64,6 +68,9 @@ class TestZotero:
             "extensions.enabledScopes": 15,
             "xpinstall.signatures.required": False,
             "extensions.readin-yidu.testOrigins": self.test_origins,
+            # The plugin checks readin.cc for a newer version when Zotero starts; not in tests (test_update.py turns it on).
+            "extensions.readin-yidu.checkOnStart": False,
+            **self.extra_prefs,
         }
         (profile / "user.js").write_text(
             "".join(f"user_pref({json.dumps(k)}, {json.dumps(v)});\n" for k, v in prefs.items())

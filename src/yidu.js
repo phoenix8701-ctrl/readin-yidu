@@ -30,10 +30,12 @@ ReadINYidu = {
     Object.assign(this, info);
     this.bridge.start();
     this.ui.start();
+    this.updater.start();
     Zotero.debug(`ReadIN 译读 ${this.version} started`);
   },
 
   shutdown() {
+    this.updater.stop();
     this.ui.stop();
     this.bridge.stop();
   },

@@ -7,7 +7,7 @@ function uninstall() {}
 
 async function startup({ id, version, rootURI }) {
   await Zotero.initializationPromise;
-  for (const file of ["yidu.js", "bridge.js", "ui.js"]) {
+  for (const file of ["yidu.js", "bridge.js", "ui.js", "updater.js"]) {
     Services.scriptloader.loadSubScript(rootURI + "src/" + file);
   }
   ReadINYidu.startup({ id, version, rootURI });
