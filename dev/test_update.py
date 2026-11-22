@@ -120,7 +120,7 @@ def main():
         print("1. ReadIN asks for an update")
         with TestZotero(port=23141, xpi=old_xpi, prefs=insecure) as z:
             ping = z.ping
-            check("old copy runs: 0.0.1, can update (api 4, update: true)", ping["version"] == "0.0.1" and ping["api"] == 4 and ping.get("update") is True, ping)
+            check("old copy runs: 0.0.1, can update (api 5, update: true)", ping["version"] == "0.0.1" and ping["api"] == 5 and ping.get("update") is True, ping)
             status, _ = z.call("POST", "/readin/update", body="{}", origin="https://example.com")
             check("another website can't ask for an update", status == 403, status)
             status, body = z.call("POST", "/readin/update", body="{}")

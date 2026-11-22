@@ -34,7 +34,7 @@ def main():
 
         print("who may connect")
         status, body = z.call("GET", "/readin/ping")
-        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 4 and body.get("update") is True, body)
+        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 5 and body.get("update") is True, body)
         check("answer allows that page (CORS)", z.last_headers.get("Access-Control-Allow-Origin") == "https://beta.anqapdf.app", z.last_headers)
         for origin in ["https://cn-beta.anqapdf.app", "https://readin.cc"]:
             status, _ = z.call("GET", "/readin/ping", origin=origin)
@@ -223,6 +223,104 @@ def main():
         check("user trashed our note -> a new one is made", status == 200 and body["key"] != note_key, body)
         status, body = z.call("POST", "/readin/notes/save", {"parentKey": notes["pdf"], "html": html})
         check("refuse a note under a PDF", status == 400, (status, body))
+
+        print("notes with live citations (v0.5.0)")
+        status, body = z.call("GET", "/readin/ping")
+        check("api 5", body.get("api") == 5, body)
+        # a ReadIN highlight with the page number printed on the paper
+        status, body = z.call("POST", "/readin/annotations/save", {
+            "attachmentKey": notes["pdf"],
+            "annotation": {"type": "highlight", "text": "Chapter 1. Notes on Reading", "comment": "这是想法", "color": "#ffd400", "pageIndex": 0, "rects": [rect], "pageLabel": "347"},
+        })
+        live_key = body["key"]
+        label = z.eval(f'return Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{live_key}").annotationPageLabel')
+        check("highlight keeps the printed page ReadIN sends", label == "347", label)
+        z.call("POST", "/readin/annotations/save", {
+            "attachmentKey": notes["pdf"],
+            "annotation": {"key": live_key, "type": "highlight", "text": "Chapter 1. Notes on Reading", "comment": "这是想法", "color": "#ffd400", "pageIndex": 0, "rects": [rect]},
+        })
+        label = z.eval(f'return Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{live_key}").annotationPageLabel')
+        check("saved again without a page label: keeps the one it has (not the PDF page number)", label == "347", label)
+        doc = {
+            "title": "ReadIN 笔记",
+            "link": {"href": "https://beta.anqapdf.app/#zotero=" + notes["pdf"], "text": "在 ReadIN 打开这篇"},
+            "attachmentKey": notes["pdf"],
+            "sections": [
+                {"heading": "我的理解", "items": [{"kind": "insight", "question": "这篇的结论是什么?", "text": "批注帮助记忆 & 理解 <b>尤其</b>是复习时"}]},
+                {"heading": "高亮和想法", "items": [
+                    {"kind": "highlight", "annotation": live_key, "text": "Chapter 1. Notes on Reading", "comment": "这是想法", "page": "347"},
+                    {"kind": "highlight", "annotation": None, "text": "译文上的一句", "comment": "译文上画的", "page": "348", "label": "（译文）"},
+                    {"kind": "highlight", "annotation": "ZZZZZZZZ", "text": "A highlight Zotero no longer has", "page": "348–349"},
+                ]},
+                {"heading": "随想", "items": [{"kind": "note", "text": "第一行\n第二行", "page": "350"}, {"kind": "note", "text": "   "}]},
+                {"heading": "空的一节", "items": []},
+            ],
+        }
+        status, body = z.call("POST", "/readin/notes/save", {"parentKey": notes["item"], "doc": doc})
+        check("save a note from ReadIN's items", status == 200 and body.get("key") and body.get("sig"), (status, body))
+        live_note, live_sig = body.get("key"), body.get("sig")
+        info = z.eval(f"""
+          const lib = Zotero.Libraries.userLibraryID;
+          const note = Zotero.Items.getByLibraryAndKey(lib, "{live_note}");
+          const paper = Zotero.Items.getByLibraryAndKey(lib, "{notes['item']}");
+          const html = note.getNote();
+          const Parser = typeof DOMParser !== "undefined" ? DOMParser : Zotero.getMainWindow().DOMParser;
+          const d = new Parser().parseFromString(html, "text/html");
+          const box = d.querySelector("div[data-schema-version]");
+          const items = box ? JSON.parse(decodeURIComponent(box.getAttribute("data-citation-items"))) : [];
+          const highlights = [...d.querySelectorAll("span.highlight[data-annotation]")].map((s) => JSON.parse(decodeURIComponent(s.dataset.annotation)).annotationKey);
+          const cites = [...d.querySelectorAll("span.citation[data-citation]")].map((s) => JSON.parse(decodeURIComponent(s.dataset.citation)));
+          // what Word's "Add Note" does with a note: Zotero's own code that turns citations into live fields
+          const session = Object.create(Zotero.Integration.Session.prototype);
+          const [text, citations] = await session._processNote(note);
+          return {{
+            title: note.getNoteTitle(), paperURI: Zotero.URI.getItemURI(paper), items: items.map((i) => i.uris[0]), itemTitle: items[0] && items[0].itemData.title,
+            highlights, locators: cites.map((c) => c.citationItems[0].locator || null), uris: [...new Set(cites.map((c) => c.citationItems[0].uris[0]))],
+            word: citations.map((c) => c.citationItems[0].locator || null), wordText: text,
+            headings: [...d.querySelectorAll("h2")].map((h) => h.textContent), link: d.querySelector("a") && d.querySelector("a").getAttribute("href"),
+            body: d.body.textContent,
+          }};
+        """)
+        check("note title is ReadIN 笔记; link back to ReadIN", info["title"] == "ReadIN 笔记" and info["link"].endswith("#zotero=" + notes["pdf"]), info["title"])
+        check("metadata container names the paper (like Zotero's own notes)", info["items"] == [info["paperURI"]] and info["itemTitle"].startswith("Notes on Reading"), info["items"])
+        check("the live highlight links to its Zotero annotation (click → shows it in the PDF)", info["highlights"] == [live_key], info["highlights"])
+        check("every citation points at the paper", info["uris"] == [info["paperURI"]], info["uris"])
+        check("citations: 我的理解 without a page, highlights and 随想 with the printed page", info["locators"] == [None, "347", "348", "348–349", "350"], info["locators"])
+        check("Word's Add Note finds 5 live citations in it (Zotero's integration code)", info["word"] == [None, "347", "348", "348–349", "350"], info["word"])
+        check("empty sections and blank items are left out", info["headings"] == ["我的理解", "高亮和想法", "随想"], info["headings"])
+        check("text is escaped, not run as HTML; the thought follows its highlight", "批注帮助记忆 & 理解" in info["body"] and "<b>" not in info["body"] and "这是想法" in info["body"] and "译文上画的" in info["body"], info["body"][:300])
+        check("a highlight on the translation says so right after the quote", "“译文上的一句”（译文）" in info["body"], info["body"][:400])
+        status, body = z.call("POST", "/readin/notes/save", {"parentKey": notes["item"], "noteKey": live_note, "sig": live_sig, "doc": doc})
+        check("save again with the sig: same note", body.get("key") == live_note and not body.get("kept"), body)
+        live_sig = body.get("sig")
+        # Zotero's note editor rewrites markup and refreshes citation text: not an edit
+        z.eval(f"""
+          const note = Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{live_note}");
+          note.setNote(note.getNote().replace(/<span class="citation-item">[^<]*<\\/span>/g, '<span class="citation-item">Smith and Chen, 2021</span>').replace("<h2>", '<h2 style="">'));
+          await note.saveTx(); return true;
+        """)
+        status, body = z.call("POST", "/readin/notes/save", {"parentKey": notes["item"], "noteKey": live_note, "sig": live_sig, "doc": doc})
+        check("Zotero rewrote markup / citation text only: still ours, updated in place", body.get("key") == live_note and not body.get("kept"), body)
+        live_sig = body.get("sig")
+        # the user writes in the note in Zotero
+        z.eval(f"""
+          const note = Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{live_note}");
+          note.setNote(note.getNote().replace("</h1>", "</h1><p>我自己加的一句话</p>"));
+          await note.saveTx(); return true;
+        """)
+        status, body = z.call("POST", "/readin/notes/save", {"parentKey": notes["item"], "noteKey": live_note, "sig": live_sig, "doc": doc})
+        kept = z.eval(f'return Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{live_note}").getNote()')
+        check("the user edited our note: left alone (kept), a fresh note written", body.get("kept") == live_note and body.get("key") != live_note and "我自己加的一句话" in kept, body)
+        fresh_note, fresh_sig = body.get("key"), body.get("sig")
+        status, body = z.call("POST", "/readin/notes/remove", {"parentKey": notes["item"], "noteKey": live_note, "sig": live_sig})
+        check("remove refuses a note the user edited", body == {"trashed": False}, body)
+        status, body = z.call("POST", "/readin/notes/remove", {"parentKey": notes["item"], "noteKey": fresh_note, "sig": fresh_sig})
+        gone = z.eval(f'return Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{fresh_note}").deleted')
+        check("remove trashes our own unedited note", body == {"trashed": True} and gone is True, (body, gone))
+        status, body = z.call("POST", "/readin/notes/save", {"parentKey": notes["item"], "html": "<h1>ReadIN AI 整理</h1><p>要点</p>"})
+        check("old-style html still works (older ReadIN), and now returns a sig", status == 200 and body.get("sig"), body)
+        z.eval(f'await Zotero.Items.trashTx([Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{body.get("key")}").id, Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{live_note}").id])')
+        z.call("POST", "/readin/annotations/delete", {"attachmentKey": notes["pdf"], "keys": [live_key]})
 
         print("translated PDFs back into Zotero (v0.2.0)")
         pdf_bytes = sorted(TEST_PDFS.glob("*.pdf"))[0].read_bytes()

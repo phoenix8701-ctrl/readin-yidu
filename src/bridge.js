@@ -10,8 +10,10 @@
 // - Zotero's server can only send text, so PDF bytes travel as base64url.
 
 ReadINYidu.bridge = {
-  API: 4, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
-  // 4 (v0.4.0): /readin/hello remembers the browser ReadIN is set up in, and "Open in ReadIN" opens that browser
+  API: 5, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
+  // 4 (v0.4.0): /readin/hello remembers the browser ReadIN is set up in, and "Open in ReadIN" opens that browser;
+  // 5 (v0.5.0): notes with live Zotero citations (/readin/notes/save takes { doc }), a note the user edited is left alone
+  // (sig), /readin/notes/remove, and a highlight saved again without a page label keeps the one it has
   TAG: "ReadIN 译文",
   paths: [],
 
@@ -43,6 +45,7 @@ ReadINYidu.bridge = {
     post("/readin/annotations/save", (body) => this.saveAnnotation(body));
     post("/readin/annotations/delete", (body) => this.deleteAnnotations(body));
     post("/readin/notes/save", (body) => this.saveNote(body));
+    post("/readin/notes/remove", (body) => this.removeNote(body));
     // v0.2.0: ReadIN's translated PDF goes back under the same paper
     get("/readin/translations", (q) => this.translations(q.get("key")));
     post("/readin/attach", (body) => this.attach(body));
@@ -215,7 +218,9 @@ ReadINYidu.bridge = {
       text: String(a.text || ""),
       comment: String(a.comment || ""),
       color: /^#[0-9a-f]{6}$/i.test(a.color) ? a.color : "#ffd400",
-      pageLabel: String(a.pageLabel || pageIndex + 1),
+      // v0.5.0: ReadIN sends the page number printed on the paper for its own highlights. Without one (a highlight made
+      // in Zotero), keep the label Zotero gave it instead of falling back to the PDF page number.
+      pageLabel: String(a.pageLabel || (existing && existing.annotationPageLabel) || pageIndex + 1),
       sortIndex: this.sortIndex(pageIndex, a.offset, a.top),
       position: { pageIndex, rects },
       tags,
@@ -314,20 +319,124 @@ ReadINYidu.bridge = {
     return { ok: true };
   },
 
-  async saveNote({ parentKey, noteKey, html }) {
+  // ReadIN's notes under the paper: "ReadIN 笔记" (the reader's own notes) and "ReadIN AI 整理".
+  // v0.5.0: ReadIN may send { doc } instead of html; we build the note the way Zotero builds "Add Note from Annotations",
+  // so highlights link to their place in the PDF and every citation is a real Zotero citation (Word's Add Note keeps them live).
+  // sig: the text of the note as we last wrote it (see noteSig). If the note no longer matches, the user edited it in Zotero:
+  // it's theirs now, so we leave it alone and write a fresh note (reply carries kept: the key of the one we left).
+  async saveNote({ parentKey, noteKey, html, doc, sig }) {
     const Y = ReadINYidu;
     const parent = Y.item(parentKey);
     if (!parent.isRegularItem()) throw this.bad("notes go under a paper, not an attachment");
+    if (doc && typeof doc === "object") html = await this.noteFromDoc(parent, doc);
     if (typeof html !== "string" || !html.trim()) throw this.bad("html is empty");
-    let note = noteKey ? Zotero.Items.getByLibraryAndKey(Y.libraryID(), noteKey) : null;
+    let note = this.ourNote(parent, noteKey);
+    let kept = null;
+    if (note && typeof sig === "string" && sig && this.noteSig(note.getNote()) !== sig) {
+      kept = note.key;
+      note = null;
+    }
     // If the user deleted or moved our note, start a new one instead of resurrecting it.
-    if (!note || !note.isNote() || note.deleted || note.parentItemID !== parent.id) {
+    if (!note) {
       note = new Zotero.Item("note");
-      note.libraryID = Y.libraryID();
+      note.libraryID = parent.libraryID;
       note.parentID = parent.id;
     }
     note.setNote(html);
     await note.saveTx();
-    return { key: note.key };
+    return { key: note.key, sig: this.noteSig(note.getNote()), ...(kept ? { kept } : {}) };
+  },
+
+  // A note ReadIN no longer needs (e.g. the AI note after all AI summaries were deleted): to the trash, unless the user edited it.
+  async removeNote({ parentKey, noteKey, sig }) {
+    const parent = ReadINYidu.item(parentKey);
+    const note = this.ourNote(parent, noteKey);
+    if (!note || (typeof sig === "string" && sig && this.noteSig(note.getNote()) !== sig)) return { trashed: false };
+    await Zotero.Items.trashTx([note.id]);
+    return { trashed: true };
+  },
+
+  ourNote(parent, noteKey) {
+    const note = noteKey ? Zotero.Items.getByLibraryAndKey(parent.libraryID, noteKey) : null;
+    return note && note.isNote() && !note.deleted && note.parentItemID === parent.id ? note : null;
+  },
+
+  // What the user would notice changing: the words of the note. Markup and the text of citations don't count
+  // (Zotero's note editor rewrites both when it opens a note, and refreshes citations when the paper's details change).
+  noteSig(html) {
+    const text = String(html || "")
+      .replace(/<span class="citation-item">[\s\S]*?<\/span>/g, "")
+      .replace(/<span class="citation"[^>]*>[^<]*<\/span>/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&")
+      .replace(/\s+/g, " ")
+      .trim();
+    let hash = 0x811c9dc5; // FNV-1a
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return `${text.length}-${hash.toString(16)}`;
+  },
+
+  // doc: { title, link: { href, text }, attachmentKey, sections: [{ heading, items }] }
+  // items: { kind: "highlight", annotation, text, comment, page, label } | { kind: "note", text, page } | { kind: "insight", question, text }
+  // label: words after the quote, e.g. "（译文）" for a highlight on ReadIN's translation (so it never passes for the paper's own words)
+  // A highlight whose Zotero annotation exists is written by Zotero's own serializer (the user's note template, a link to
+  // the spot in the PDF, the annotation's page label); others get the same kind of citation with the page ReadIN sends.
+  async noteFromDoc(parent, doc) {
+    const U = Zotero.EditorInstanceUtilities;
+    const text = (s) => U._transformTextToHTML(String(s == null ? "" : s).trim());
+    const attr = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const uris = [Zotero.URI.getItemURI(parent)];
+    const itemData = Zotero.Utilities.Item.itemToCSLJSON(parent);
+    const cite = (locator) => {
+      const item = { uris };
+      if (locator) item.locator = String(locator);
+      const citation = { citationItems: [item], properties: {} };
+      const formatted = U.formatCitation({ citationItems: [{ ...item, itemData }], properties: {} });
+      return `<span class="citation" data-citation="${encodeURIComponent(JSON.stringify(citation))}">${formatted}</span>`;
+    };
+    let att = null;
+    try {
+      att = doc.attachmentKey ? ReadINYidu.item(doc.attachmentKey) : null;
+    } catch (e) {
+      att = null;
+    }
+    let html = `<h1>${text(doc.title || "ReadIN")}</h1>\n`;
+    if (doc.link && /^https:\/\//.test(doc.link.href || "")) {
+      html += `<p><a href="${attr(doc.link.href)}">${text(doc.link.text || doc.link.href)}</a></p>\n`;
+    }
+    for (const section of Array.isArray(doc.sections) ? doc.sections : []) {
+      const items = (Array.isArray(section.items) ? section.items : []).filter((it) => it && String(it.text || "").trim());
+      if (!items.length) continue;
+      html += `<h2>${text(section.heading)}</h2>\n`;
+      for (const it of items) {
+        if (it.kind === "highlight") {
+          const a = this.liveAnnotation(att, it.annotation);
+          if (a) {
+            const json = await Zotero.Annotations.toJSON(a);
+            json.attachmentItemID = att.id;
+            json.id = a.key;
+            html += U.serializeAnnotations([json], true).html + "\n";
+          } else {
+            html += `<p>${text(`“${String(it.text).trim()}”`)}${it.label ? text(it.label) : ""} ${cite(it.page)}${it.comment ? ` ${text(it.comment)}` : ""}</p>\n`;
+          }
+        } else if (it.kind === "insight") {
+          if (it.question) html += `<p><strong>${text(it.question)}</strong></p>\n`;
+          html += `<p>${text(it.text)} ${cite(null)}</p>\n`;
+        } else {
+          html += `<p>${text(it.text)} ${cite(it.page)}</p>\n`;
+        }
+      }
+    }
+    return `<div data-citation-items="${encodeURIComponent(JSON.stringify([{ uris, itemData }]))}" data-schema-version="9">${html}</div>`;
+  },
+
+  // The Zotero highlight ReadIN's highlight was saved as (only a live one on this PDF).
+  liveAnnotation(att, key) {
+    if (!att || typeof key !== "string" || !key) return null;
+    const a = Zotero.Items.getByLibraryAndKey(att.libraryID, key);
+    return a && a.isAnnotation() && a.parentItemID === att.id && !a.deleted && ["highlight", "underline"].includes(a.annotationType) ? a : null;
   },
 };
