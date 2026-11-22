@@ -149,6 +149,22 @@ def main():
         status, body = z.call("GET", "/readin/annotations?key=" + notes["pdf"])
         a = body["annotations"][0]
         check("update same highlight (comment, color)", len(body["annotations"]) == 1 and a["comment"] == "改过的随想" and a["color"] == "#2ea8e5", body)
+        # v0.4.1: tags added in Zotero survive when ReadIN saves the highlight again without tags
+        z.eval(f"const a = Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, '{key}'); a.addTag('方法'); a.addTag('样本量'); return a.saveTx().then(() => true);")
+        z.call("POST", "/readin/annotations/save", {
+            "attachmentKey": notes["pdf"],
+            "annotation": {"key": key, "type": "highlight", "text": "Chapter 1. Notes on Reading", "comment": "又改了一次", "color": "#2ea8e5", "pageIndex": 0, "rects": [rect]},
+        })
+        status, body = z.call("GET", "/readin/annotations?key=" + notes["pdf"])
+        a = body["annotations"][0]
+        check("saving again without tags keeps the tags added in Zotero (v0.4.1)", a["comment"] == "又改了一次" and sorted(t["name"] for t in a.get("tags", [])) == ["方法", "样本量"], a.get("tags"))
+        z.call("POST", "/readin/annotations/save", {
+            "attachmentKey": notes["pdf"],
+            "annotation": {"key": key, "type": "highlight", "text": "Chapter 1. Notes on Reading", "comment": "又改了一次", "color": "#2ea8e5", "pageIndex": 0, "rects": [rect], "tags": ["方法", " 研究空白 "]},
+        })
+        status, body = z.call("GET", "/readin/annotations?key=" + notes["pdf"])
+        a = body["annotations"][0]
+        check("ReadIN sends its own tags: they replace the list", sorted(t["name"] for t in a.get("tags", [])) == ["方法", "研究空白"], a.get("tags"))
         status, body = z.call("POST", "/readin/annotations/save", {
             "attachmentKey": notes["pdf"],
             "annotation": {"type": "note", "comment": "一张便签", "pageIndex": 1, "rects": [[100, 500, 122, 522]]},

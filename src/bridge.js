@@ -186,13 +186,14 @@ ReadINYidu.bridge = {
     if (!Array.isArray(rects) || !rects.length || !rects.every((r) => Array.isArray(r) && r.length === 4 && r.every(Number.isFinite))) {
       throw this.bad("rects must be [[x1, y1, x2, y2], ...]");
     }
+    let existing = null;
     if (a.key) {
       try {
         Zotero.DataObjectUtilities.checkKey(a.key);
       } catch (e) {
         throw this.bad("bad key");
       }
-      const existing = Zotero.Items.getByLibraryAndKey(Y.libraryID(), a.key);
+      existing = Zotero.Items.getByLibraryAndKey(Y.libraryID(), a.key);
       if (existing) {
         if (!existing.isAnnotation() || existing.parentItemID !== att.id) throw this.bad("key belongs to something else");
         if (existing.annotationIsExternal) throw this.bad("annotation lives in the PDF file and is read-only");
@@ -201,6 +202,13 @@ ReadINYidu.bridge = {
         }
       }
     }
+    // v0.4.1: Zotero replaces an annotation's tags with the ones we pass. ReadIN doesn't send tags yet, so editing a highlight
+    // in ReadIN (a thought, a color) used to wipe the tags added in Zotero. Keep them unless ReadIN sends its own list.
+    const tags = Array.isArray(a.tags)
+      ? a.tags.map((t) => String(t).trim()).filter(Boolean).map((name) => ({ name }))
+      : existing
+        ? existing.getTags().map((t) => ({ name: t.tag }))
+        : [];
     const item = await Zotero.Annotations.saveFromJSON(att, {
       key: a.key || Zotero.DataObjectUtilities.generateKey(),
       type: a.type,
@@ -210,6 +218,7 @@ ReadINYidu.bridge = {
       pageLabel: String(a.pageLabel || pageIndex + 1),
       sortIndex: this.sortIndex(pageIndex, a.offset, a.top),
       position: { pageIndex, rects },
+      tags,
     });
     return { key: item.key, dateModified: Zotero.Date.sqlToISO8601(item.dateModified) };
   },
