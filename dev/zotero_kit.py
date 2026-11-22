@@ -68,6 +68,8 @@ class TestZotero:
             "extensions.enabledScopes": 15,
             "xpinstall.signatures.required": False,
             "extensions.readin-yidu.testOrigins": self.test_origins,
+            # Lets the tests reach the plugin object (Zotero.__readinYidu), e.g. to fake opening a browser (v0.4.0)
+            "extensions.readin-yidu.testHooks": True,
             # The plugin checks readin.cc for a newer version when Zotero starts; not in tests (test_update.py turns it on).
             "extensions.readin-yidu.checkOnStart": False,
             **self.extra_prefs,

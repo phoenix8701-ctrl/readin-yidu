@@ -10,7 +10,8 @@
 // - Zotero's server can only send text, so PDF bytes travel as base64url.
 
 ReadINYidu.bridge = {
-  API: 3, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update)
+  API: 4, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
+  // 4 (v0.4.0): /readin/hello remembers the browser ReadIN is set up in, and "Open in ReadIN" opens that browser
   TAG: "ReadIN 译文",
   paths: [],
 
@@ -21,12 +22,18 @@ ReadINYidu.bridge = {
 
     get("/readin/ping", () => ({
       ok: true, plugin: "readin-yidu", version: Y.version, api: this.API, zotero: Zotero.version, site: Y.site(),
-      menu: Boolean(Y.ui.menuID), update: true,
+      menu: Boolean(Y.ui.menuID), update: true, browser: Y.pref("browser", ""),
     }));
     // ReadIN says hello when it connects, so "Open in ReadIN" opens the same ReadIN (international or mainland).
+    // v0.4.0: and in the same browser. ReadIN sends { browser, ready }: ready is true only when ReadIN is set up in that browser
+    // (its own AI access or an account), so a browser Zotero merely opened once doesn't take over. A set-up browser
+    // we can't open by name ("other") means: use the default browser.
     post("/readin/hello", (body, req) => {
       if (/^https:\/\//.test(req.headers.origin)) Y.setPref("site", req.headers.origin);
-      return { ok: true, site: Y.site() };
+      if (body && body.ready === true && typeof body.browser === "string") {
+        Y.setPref("browser", Y.BROWSERS[body.browser] ? body.browser : "default");
+      }
+      return { ok: true, site: Y.site(), browser: Y.pref("browser", "") };
     });
     get("/readin/collections", () => ({ collections: this.collections() }));
     get("/readin/items", (q) => this.items(q.get("collection"), q.get("keys")));

@@ -34,7 +34,7 @@ def main():
 
         print("who may connect")
         status, body = z.call("GET", "/readin/ping")
-        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 3 and body.get("update") is True, body)
+        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 4 and body.get("update") is True, body)
         check("answer allows that page (CORS)", z.last_headers.get("Access-Control-Allow-Origin") == "https://beta.anqapdf.app", z.last_headers)
         for origin in ["https://cn-beta.anqapdf.app", "https://readin.cc"]:
             status, _ = z.call("GET", "/readin/ping", origin=origin)
@@ -53,6 +53,41 @@ def main():
         z.call("POST", "/readin/hello", {})
         status, body = z.call("GET", "/readin/ping")
         check("hello from the international site switches back", body["site"] == "https://beta.anqapdf.app", body)
+
+        print("which browser to open (v0.4.0)")
+        url = "https://beta.anqapdf.app/#zotero=ABCD2345"
+        check("not known yet", body.get("browser") == "", body)
+        status, body = z.call("POST", "/readin/hello", {"browser": "edge", "ready": False})
+        check("a browser where ReadIN isn't set up doesn't count", body.get("browser") == "", body)
+        status, body = z.call("POST", "/readin/hello", {"browser": "edge", "ready": True})
+        check("set up in Edge: remembered", body.get("browser") == "edge", body)
+        check("ping says which browser", z.call("GET", "/readin/ping")[1].get("browser") == "edge")
+        # Fake the launching: record what would be opened, never open a real browser
+        z.eval("""Zotero.__calls = []; Zotero.__saved = { exec: Zotero.Utilities.Internal.exec, launch: Zotero.launchURL, isMac: Zotero.isMac, isWin: Zotero.isWin, program: Zotero.__readinYidu.windowsProgram };
+          Zotero.Utilities.Internal.exec = async (cmd, args) => { Zotero.__calls.push(['exec', String(cmd), ...args]); if (args.includes('com.nosuch.browser')) throw new Error('exit status 1'); return true; };
+          Zotero.launchURL = (u) => { if (u.startsWith('nosuch-scheme:')) throw new Error('no handler'); Zotero.__calls.push(['launch', u]); };
+          return true;""")
+        opened = "Zotero.__calls = []; return Zotero.__readinYidu.openInReadIN('ABCD2345').then((how) => [how, Zotero.__calls]);"
+        how, calls = z.eval("Zotero.isMac = true; Zotero.isWin = false; " + opened)
+        check("Mac: opens Edge by name (open -b), not the default browser", how == "edge" and calls == [["exec", "/usr/bin/open", "-b", "com.microsoft.edgemac", url]], (how, calls))
+        how, calls = z.eval("Zotero.__readinYidu.BROWSERS.edge.mac = 'com.nosuch.browser'; " + opened)
+        check("Mac: that browser isn't installed -> the default browser", how == "default" and calls[-1] == ["launch", url], (how, calls))
+        z.eval("Zotero.__readinYidu.BROWSERS.edge.mac = 'com.microsoft.edgemac'; return true;")
+        how, calls = z.eval("Zotero.isMac = false; Zotero.isWin = true; " + opened)
+        check("Windows: Edge through microsoft-edge:", how == "edge" and calls == [["launch", "microsoft-edge:" + url]], (how, calls))
+        how, calls = z.eval("Zotero.__readinYidu.BROWSERS.edge.scheme = 'nosuch-scheme'; Zotero.__readinYidu.windowsProgram = (exe) => exe === 'msedge.exe' ? 'C:\\\\Edge\\\\msedge.exe' : null; " + opened)
+        check("Windows: no microsoft-edge: handler -> msedge.exe from App Paths", how == "edge" and calls == [["exec", "C:\\Edge\\msedge.exe", url]], (how, calls))
+        z.eval("Zotero.__readinYidu.BROWSERS.edge.scheme = 'microsoft-edge'; return true;")
+        z.call("POST", "/readin/hello", {"browser": "chrome", "ready": True})
+        how, calls = z.eval("Zotero.__readinYidu.windowsProgram = (exe) => exe === 'chrome.exe' ? 'C:\\\\Chrome\\\\chrome.exe' : null; " + opened)
+        check("Windows: set up in Chrome -> chrome.exe from App Paths", how == "chrome" and calls == [["exec", "C:\\Chrome\\chrome.exe", url]], (how, calls))
+        how, calls = z.eval("Zotero.__readinYidu.windowsProgram = () => null; " + opened)
+        check("Windows: Chrome not found -> the default browser", how == "default" and calls == [["launch", url]], (how, calls))
+        status, body = z.call("POST", "/readin/hello", {"browser": "other", "ready": True})
+        how, calls = z.eval(opened)
+        check("set up in a browser we can't open by name -> the default browser", body.get("browser") == "default" and how == "default" and calls == [["launch", url]], (body, how, calls))
+        z.eval("""const s = Zotero.__saved; Zotero.Utilities.Internal.exec = s.exec; Zotero.launchURL = s.launch; Zotero.isMac = s.isMac; Zotero.isWin = s.isWin;
+          Zotero.__readinYidu.windowsProgram = s.program; return true;""")
 
         print("papers and collections")
         status, body = z.call("GET", "/readin/collections")

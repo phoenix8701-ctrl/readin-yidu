@@ -26,15 +26,34 @@ ReadINYidu = {
     open: { zh: "在 ReadIN 打开", en: "Open in ReadIN" },
   },
 
+  // v0.4.0: "Open in ReadIN" opens the browser you actually use ReadIN in, not just the computer's default browser
+  // (the default one may be another browser that has none of your ReadIN settings and notes).
+  // ReadIN tells us which browser it runs in through /readin/hello, and only when it is set up there (bridge.js).
+  // mac: the app's bundle id for `open -b`; exe: the program name Windows lists under "App Paths";
+  // scheme: a URL scheme Windows hands to that browser (Edge registers microsoft-edge:).
+  BROWSERS: {
+    edge: { mac: "com.microsoft.edgemac", exe: "msedge.exe", scheme: "microsoft-edge" },
+    chrome: { mac: "com.google.Chrome", exe: "chrome.exe" },
+    firefox: { mac: "org.mozilla.firefox", exe: "firefox.exe" },
+    safari: { mac: "com.apple.Safari" },
+    brave: { mac: "com.brave.Browser", exe: "brave.exe" },
+    opera: { mac: "com.operasoftware.Opera", exe: "opera.exe" },
+    vivaldi: { mac: "com.vivaldi.Vivaldi", exe: "vivaldi.exe" },
+    arc: { mac: "company.thebrowser.Browser" },
+  },
+
   startup(info) {
     Object.assign(this, info);
     this.bridge.start();
     this.ui.start();
     this.updater.start();
+    // Test profiles only (dev/zotero_kit.py sets testHooks; nobody else does): let the tests reach this object
+    if (this.pref("testHooks", false) === true) Zotero.__readinYidu = this;
     Zotero.debug(`ReadIN 译读 ${this.version} started`);
   },
 
   shutdown() {
+    if (Zotero.__readinYidu === this) delete Zotero.__readinYidu;
     this.updater.stop();
     this.ui.stop();
     this.bridge.stop();
@@ -103,6 +122,70 @@ ReadINYidu = {
   },
 
   openInReadIN(attachmentKey) {
-    Zotero.launchURL(`${this.site()}/#zotero=${encodeURIComponent(attachmentKey)}`);
+    return this.launch(`${this.site()}/#zotero=${encodeURIComponent(attachmentKey)}`);
+  },
+
+  // Open a ReadIN page in the browser ReadIN last said it is set up in; if that fails (or we don't know yet), the default
+  // browser as before. Returns "edge", "chrome", … or "default" (the tests look at lastLaunch).
+  async launch(url) {
+    const name = this.pref("browser", "");
+    let how = "default";
+    if (this.BROWSERS[name]) {
+      try {
+        if (await this.launchIn(name, url)) how = name;
+      } catch (e) {
+        Zotero.debug(`ReadIN 译读: couldn't open ${name} (${e}), using the default browser`);
+      }
+    }
+    if (how === "default") Zotero.launchURL(url);
+    this.lastLaunch = { how, url };
+    return how;
+  },
+
+  async launchIn(name, url) {
+    const b = this.BROWSERS[name];
+    if (Zotero.isMac && b.mac) {
+      // `open -b` exits with an error when that browser isn't installed → the default browser instead
+      await Zotero.Utilities.Internal.exec("/usr/bin/open", ["-b", b.mac, url]);
+      return true;
+    }
+    if (Zotero.isWin) {
+      if (b.scheme) {
+        try {
+          Zotero.launchURL(`${b.scheme}:${url}`);
+          return true;
+        } catch (e) {
+          // no handler for that scheme: try the program itself
+        }
+      }
+      const program = b.exe && this.windowsProgram(b.exe);
+      if (!program) return false;
+      // Don't wait: a browser that wasn't open yet keeps running. exec() throws right away if the file can't run.
+      Zotero.Utilities.Internal.exec(program, [url]).catch((e) => Zotero.debug(`ReadIN 译读: ${program} ${e}`));
+      return true;
+    }
+    return false;
+  },
+
+  // Where Windows says a browser is installed (HKCU first, then HKLM, "App Paths"); null if it isn't.
+  windowsProgram(exe) {
+    const Ci = Components.interfaces;
+    for (const root of [Ci.nsIWindowsRegKey.ROOT_KEY_CURRENT_USER, Ci.nsIWindowsRegKey.ROOT_KEY_LOCAL_MACHINE]) {
+      const key = Components.classes["@mozilla.org/windows-registry-key;1"].createInstance(Ci.nsIWindowsRegKey);
+      try {
+        key.open(root, `SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${exe}`, Ci.nsIWindowsRegKey.ACCESS_READ);
+        const path = key.readStringValue("").replace(/^"(.*)"$/, "$1");
+        if (path) return path;
+      } catch (e) {
+        // not installed for this user / on this computer
+      } finally {
+        try {
+          key.close();
+        } catch (e) {
+          // wasn't open
+        }
+      }
+    }
+    return null;
   },
 };

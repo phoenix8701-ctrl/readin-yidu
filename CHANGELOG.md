@@ -1,5 +1,17 @@
 # 更新记录
 
+## v0.4.0（2026-11-22）
+
+- **用你平时用 ReadIN 的浏览器打开**：有用户反馈，在 Edge 里装好、连好了 ReadIN，可在 Zotero 里点「在 ReadIN 打开」，打开的却是电脑的默认浏览器（联想浏览器）：
+  那里没有他的邀请码和笔记，也连不上 Zotero。以前插件只会用 Zotero 的「打开网址」，总是默认浏览器。现在：
+  - ReadIN 连 Zotero 时告诉插件它在哪个浏览器、在那里配好了没有（`/readin/hello` 带 `{ browser, ready }`）；插件只记配好了的那个，
+    所以 Zotero 临时打开过一次的浏览器不会顶掉它。配好了、但插件叫不出名字的浏览器（联想、QQ、360……）记成「用默认浏览器」。
+  - 「在 ReadIN 打开」和阅读器顶栏的「ReadIN」按钮用记住的浏览器打开：Mac 上用 `open -b`（Edge、Chrome、Firefox、Safari、Brave、Opera、Vivaldi、Arc），
+    Windows 上 Edge 用 `microsoft-edge:`，别的从注册表的 App Paths 找到程序再打开。没装、打不开时退回默认浏览器，和以前一样。
+  - 接口版本 4；`/readin/ping` 多了 `browser`。配合 ReadIN v0.155（它在还没用过 ReadIN 的浏览器里从 Zotero 打开又连不上时，会说清楚原因、给「复制链接」）。
+- 测试：`dev/test_bridge.py` 加了「用哪个浏览器打开」（打开浏览器的动作换成假的，不会真的打开）：没配好的不记、记住 Edge、Mac 用 open -b、没装退回默认、
+  Windows 走 microsoft-edge: 或 App Paths、找不到退回默认、叫不出名字的用默认。测试用的 Zotero 多了一个只在测试里打开的入口（testHooks）。
+
 ## v0.3.0（2026-11-21）
 
 - **更新更省事**：以前 ReadIN 说插件太旧时，要重新下载插件、拖进 Zotero；Zotero 自己大约一天才检查一次新版。现在：

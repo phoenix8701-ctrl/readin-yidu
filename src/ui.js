@@ -21,7 +21,7 @@ ReadINYidu.ui = {
           },
           onCommand: (event, context) => {
             const pdf = Y.pdfsOf(context.items[0])[0];
-            if (pdf) Y.openInReadIN(pdf.key);
+            if (pdf) Y.openInReadIN(pdf.key).catch((e) => Zotero.logError(e));
           },
         }],
       });
@@ -50,7 +50,7 @@ ReadINYidu.ui = {
     button.style.cssText = "width:auto;padding:0 8px;font-weight:600;font-size:12px;";
     button.addEventListener("click", () => {
       const item = Zotero.Items.get(reader.itemID);
-      if (item) Y.openInReadIN(item.key);
+      if (item) Y.openInReadIN(item.key).catch((e) => Zotero.logError(e));
     });
     append(button);
   },
