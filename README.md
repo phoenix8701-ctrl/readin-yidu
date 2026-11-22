@@ -1,5 +1,7 @@
 # ReadIN 译读
 
+**English:** ReadIN for Zotero — read your Zotero papers in ReadIN (side-by-side translation, AI that explains the paper), and your highlights and notes come back to Zotero. [Read in English ↓](#english)
+
 在 Zotero 里点一下，用 ReadIN 读论文：整页中英对照、AI 讲清这篇说了什么；读完的高亮和笔记自动回到 Zotero。
 
 > **内测中，点这个链接就能用 AI**：[领内测资格](https://beta.anqapdf.app/#ref=cze3sewgik)。不用注册、不用填东西，打开 ReadIN 就自动配好（每月名额有限，领完了下个月再来）。
