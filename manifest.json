@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "ReadIN 译读",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Read your papers in ReadIN, then send highlights and notes back. 在 ReadIN 里读论文，高亮和笔记送回文献库。",
   "homepage_url": "https://readin.cc",
   "author": "Anqa Labs",
@@ -13,7 +13,7 @@
     "zotero": {
       "id": "yidu@readin.cc",
       "update_url": "https://readin.cc/yidu/update.json",
-      "strict_min_version": "10.0",
+      "strict_min_version": "9.0",
       "strict_max_version": "10.*"
     }
   }

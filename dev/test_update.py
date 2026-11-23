@@ -69,7 +69,7 @@ class Server:
         return {"addons": {PLUGIN_ID: {"updates": [{
             "version": "0.0.2",
             "update_link": f"{self.base}/new.xpi",
-            "applications": {"zotero": {"strict_min_version": "10.0"}},
+            "applications": {"zotero": {"strict_min_version": json.loads((REPO / "manifest.json").read_text())["applications"]["zotero"]["strict_min_version"]}},
         }]}}}
 
     def close(self):

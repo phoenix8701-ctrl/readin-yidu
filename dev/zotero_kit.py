@@ -25,7 +25,9 @@ ORIGIN = "https://beta.anqapdf.app"
 
 
 class TestZotero:
-    def __init__(self, port=23139, app="/Applications/Zotero.app", test_origins="", tz=None, xpi=None, prefs=None):
+    def __init__(self, port=23139, app=None, test_origins="", tz=None, xpi=None, prefs=None):
+        # YIDU_ZOTERO_APP=/path/to/Zotero.app runs the tests on another Zotero (e.g. a copy of Zotero 9, v0.5.1)
+        app = app or os.environ.get("YIDU_ZOTERO_APP") or "/Applications/Zotero.app"
         self.port = port
         self.xpi = xpi  # install this .xpi instead of the source folder (test_update.py builds small ones)
         self.extra_prefs = prefs or {}

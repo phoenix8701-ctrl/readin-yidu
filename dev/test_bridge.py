@@ -4,6 +4,7 @@
 """
 
 import base64
+import json
 import sys
 import time
 from pathlib import Path
@@ -360,6 +361,39 @@ def main():
         """)
         check("reader toolbar button registered", found == ["renderToolbar"], found)
         check("right-click menu registered", z.ping.get("menu") is True, z.ping)
+        # v0.5.1: also run for real (Zotero 9 too): the menu Zotero builds, and the button in an open PDF
+        pdf_item = z.eval(f"""
+          const parent = new Zotero.Item('journalArticle'); parent.setField('title', 'menu test'); await parent.saveTx();
+          const att = await Zotero.Attachments.importFromFile({{ file: {json.dumps(str(sorted(TEST_PDFS.glob("*.pdf"))[0]))}, parentItemID: parent.id }});
+          return [parent.id, att.id];""")
+        menu_js = """
+          const win = Zotero.getMainWindow();
+          await win.ZoteroPane.selectItem(%d);
+          await win.ZoteroPane.buildItemContextMenu();
+          const popup = win.document.getElementById('zotero-itemmenu');
+          popup.dispatchEvent(new win.Event('popupshowing'));
+          await Zotero.Promise.delay(300);
+          return [...popup.querySelectorAll('menuitem.zotero-custom-menu-item')].filter((m) => !m.hidden).map((m) => m.getAttribute('label'));
+        """ % pdf_item[0]
+        shown = z.eval(menu_js)
+        check("right-click a paper with a PDF: one 在 ReadIN 打开", shown == ["在 ReadIN 打开"], shown)
+        z.eval("""
+          const { AddonManager } = ChromeUtils.importESModule("resource://gre/modules/AddonManager.sys.mjs");
+          const addon = await AddonManager.getAddonByID("yidu@readin.cc");
+          await addon.disable(); await Zotero.Promise.delay(500); await addon.enable(); await Zotero.Promise.delay(1500);
+        """)
+        shown = z.eval(menu_js)
+        check("plugin restarted (like after an update): still just one, no leftover copy", shown == ["在 ReadIN 打开"], shown)
+        button = z.eval("""
+          const reader = await Zotero.Reader.open(%d);
+          for (let i = 0; i < 60; i++) {
+            const b = reader?._iframeWindow?.document?.querySelector('.readin-yidu-open');
+            if (b) { const text = [b.textContent, b.title]; reader.close?.(); return text; }
+            await Zotero.Promise.delay(250);
+          }
+          return null;
+        """ % pdf_item[1])
+        check("open the PDF: ReadIN button in the reader toolbar", button == ["ReadIN", "在 ReadIN 打开"], button)
 
         print("turning the plugin off removes the doors")
         z.eval("""
