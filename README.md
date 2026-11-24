@@ -25,7 +25,8 @@
 1. **下载插件**：[点这里下载](https://readin.cc/yidu/readin-yidu.xpi)，电脑的「下载」文件夹里会多一个 `readin-yidu.xpi` 文件。在中国大陆从[这里下载](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi)更快。
 2. **拖进 Zotero**：打开 Zotero，点菜单「工具 → 插件」，把刚下载的文件拖进弹出来的窗口。列表里出现「ReadIN 译读」，就装好了。
    找不到「工具」？Mac 上它在屏幕最顶上那一排菜单里；Windows 上在 Zotero 窗口的顶上。
-3. **打开 ReadIN**：用 Chrome 点[打开 ReadIN（AI 已配好）](https://beta.anqapdf.app/#ref=cze3sewgik)；在中国大陆点[打开大陆版](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero)。点最上面的「连接 Zotero」；Chrome 问能不能访问本机网络，点「允许」。
+3. **打开 ReadIN**：用 Chrome 或 Edge 点[打开 ReadIN（AI 已配好）](https://beta.anqapdf.app/#ref=cze3sewgik)；在中国大陆点[打开大陆版](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero)。点最上面的「连接 Zotero」；Chrome 问能不能访问本机网络，点「允许」。
+   Mac 上的 Safari 连不了 Zotero（Safari 不让网页连电脑上的 Zotero），请用 Chrome 或 Edge。
    以前用过 ReadIN？右上角选「文献」，书架上点「连接 Zotero」。
 
 **装好以后，两种方法都能打开一篇论文：**
@@ -39,7 +40,7 @@
 
 - **两边都要开着**：ReadIN 和 Zotero 在你自己的电脑上直接连，不经过网络，所以要同时开着、在同一台电脑上。Zotero 里新画的高亮，下次在 ReadIN 打开这篇时带过来。
 - **用哪个浏览器打开**：插件会记住你平时用 ReadIN 的浏览器（在那里配好了 ReadIN、连过 Zotero 的那个），「在 ReadIN 打开」就用它打开，不是电脑的默认浏览器（0.4 起；Windows、Mac 上的 Edge、Chrome、Firefox、Safari 等）。还没记住、或者打不开那个浏览器时，用电脑的默认浏览器。
-- **支持**：Zotero 9、10；电脑上的 Chrome。国际版的 AI 用 Claude，大陆版用 DeepSeek；在中国大陆请用大陆版（插件在大陆的时区会默认打开大陆版）。
+- **支持**：Zotero 9、10；电脑上的 Chrome 或 Edge（Safari 用不了）。国际版的 AI 用 Claude，大陆版用 DeepSeek；在中国大陆请用大陆版（插件在大陆的时区会默认打开大陆版）。
 - **更新**：插件会自己更新：Zotero 每次打开时看一下有没有新版，有就装好，不用重启。想马上更新：Zotero 里「工具 → 插件」，点右上角的齿轮 →「检查更新」。ReadIN 发现插件太旧时，也会提醒你、能直接点「现在更新」（0.3 起）。
 - **隐私**：插件只回答 ReadIN 自己的网页，别的网站一律拒绝。它唯一连互联网的是检查新版：Zotero 打开时去 readin.cc 看一下有没有新版插件（和 Zotero 平时检查插件更新一样，不带你的文献和笔记）。代码开源、不混淆、没有统计。用 AI 功能时，你要翻译或提问的文字会经过 ReadIN 的服务发给 AI。
 - **收费**：插件免费。ReadIN 正式版有免费额度，用得多可以升级。
@@ -77,7 +78,7 @@ ReadIN 里左下角的「吐槽一下」也能直接写给我，我在后台看�
 
 1. [Download the plugin](https://readin.cc/yidu/readin-yidu.xpi). A file called `readin-yidu.xpi` lands in your Downloads folder.
 2. Open Zotero, choose Tools → Plugins from the menu, and drag the file into the window. When "ReadIN 译读" shows up in the list, it's installed.
-3. In Chrome, [open ReadIN with AI ready](https://beta.anqapdf.app/#ref=cze3sewgik). Click "Connect Zotero" at the top; when Chrome asks about your local network, click Allow.
+3. In Chrome or Edge, [open ReadIN with AI ready](https://beta.anqapdf.app/#ref=cze3sewgik). Click "Connect Zotero" at the top; when Chrome asks about your local network, click Allow. Safari on the Mac can't connect to Zotero (it doesn't let websites reach Zotero on your computer), so please use Chrome or Edge.
 
 Then open a paper either way: right-click it in your library and choose "Open in ReadIN", or, if you're already reading it in Zotero, click "ReadIN" at the right of the toolbar. In mainland China, use the [China version](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero) (AI by DeepSeek) and [download the plugin here](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi).
 
@@ -101,6 +102,7 @@ Then open a paper either way: right-click it in your library and choose "Open in
 - Zotero 对 `OPTIONS` 预检不回 CORS 头，所以只用不需要预检的请求：GET，和不设类型的 POST（正文是 JSON 文字）。
 - Zotero 的本机服务只能回文字，PDF 用 base64url 传。
 - Chrome 从网站访问本机要用户允许一次（本机网络权限）。
+- Safari 不让 https 网页连 `http://127.0.0.1`（当成混合内容，请求根本发不出去；2026-11-24 在 Safari 27.2 上确认），所以 Safari 连不上，ReadIN 里请人换 Chrome 或 Edge。
 
 ## 许可证
 
