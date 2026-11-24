@@ -10,10 +10,11 @@
 // - Zotero's server can only send text, so PDF bytes travel as base64url.
 
 ReadINYidu.bridge = {
-  API: 5, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
+  API: 6, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
   // 4 (v0.4.0): /readin/hello remembers the browser ReadIN is set up in, and "Open in ReadIN" opens that browser;
   // 5 (v0.5.0): notes with live Zotero citations (/readin/notes/save takes { doc }), a note the user edited is left alone
-  // (sig), /readin/notes/remove, and a highlight saved again without a page label keeps the one it has
+  // (sig), /readin/notes/remove, and a highlight saved again without a page label keeps the one it has;
+  // 6 (v0.6.0): ReadIN also shows Zotero's image (box) and text annotations and saves its edits to them
   TAG: "ReadIN 译文",
   paths: [],
 
@@ -182,7 +183,8 @@ ReadINYidu.bridge = {
     const Y = ReadINYidu;
     const att = Y.item(attachmentKey);
     if (!Y.isPDF(att)) throw this.bad("not a PDF attachment");
-    if (!a || !["highlight", "underline", "note"].includes(a.type)) throw this.bad("type must be highlight, underline or note");
+    // v0.6.0: image (a box drawn around a formula or a figure) and text (words typed on the page) too. Ink stays read-only.
+    if (!a || !["highlight", "underline", "note", "image", "text"].includes(a.type)) throw this.bad("type must be highlight, underline, note, image or text");
     const pageIndex = Number(a.pageIndex);
     if (!Number.isInteger(pageIndex) || pageIndex < 0) throw this.bad("bad pageIndex");
     const rects = a.rects;
@@ -222,7 +224,9 @@ ReadINYidu.bridge = {
       // in Zotero), keep the label Zotero gave it instead of falling back to the PDF page number.
       pageLabel: String(a.pageLabel || (existing && existing.annotationPageLabel) || pageIndex + 1),
       sortIndex: this.sortIndex(pageIndex, a.offset, a.top),
-      position: { pageIndex, rects },
+      position: a.type === "text"
+        ? { pageIndex, rects, fontSize: Number(a.fontSize) > 0 ? Number(a.fontSize) : 14, rotation: Number(a.rotation) || 0 }
+        : { pageIndex, rects },
       tags,
     });
     return { key: item.key, dateModified: Zotero.Date.sqlToISO8601(item.dateModified) };

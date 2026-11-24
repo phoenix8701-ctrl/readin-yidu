@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "ReadIN 译读",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Read your papers in ReadIN, then send highlights and notes back. 在 ReadIN 里读论文，高亮和笔记送回文献库。",
   "homepage_url": "https://readin.cc",
   "author": "Anqa Labs",

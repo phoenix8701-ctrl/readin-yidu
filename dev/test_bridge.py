@@ -35,7 +35,7 @@ def main():
 
         print("who may connect")
         status, body = z.call("GET", "/readin/ping")
-        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 5 and body.get("update") is True, body)
+        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 6 and body.get("update") is True, body)
         check("answer allows that page (CORS)", z.last_headers.get("Access-Control-Allow-Origin") == "https://beta.anqapdf.app", z.last_headers)
         for origin in ["https://cn-beta.anqapdf.app", "https://readin.cc"]:
             status, _ = z.call("GET", "/readin/ping", origin=origin)
@@ -171,6 +171,32 @@ def main():
             "annotation": {"type": "note", "comment": "一张便签", "pageIndex": 1, "rects": [[100, 500, 122, 522]]},
         })
         check("create sticky note on page 2", status == 200, (status, body))
+        # v0.6.0: boxes (image) and text annotations can be saved too (ReadIN shows them and sends its edits)
+        box = [80, 300, 260, 420]
+        status, body = z.call("POST", "/readin/annotations/save", {
+            "attachmentKey": notes["pdf"],
+            "annotation": {"type": "image", "comment": "框住的公式", "color": "#2ea8e5", "pageIndex": 0, "rects": [box], "tags": ["公式"]},
+        })
+        check("create a box (image annotation)", status == 200 and len(body.get("key", "")) == 8, (status, body))
+        box_key = body.get("key")
+        z.call("POST", "/readin/annotations/save", {
+            "attachmentKey": notes["pdf"],
+            "annotation": {"key": box_key, "type": "image", "comment": "改过的想法", "color": "#ff6666", "pageIndex": 0, "rects": [box]},
+        })
+        status, body = z.call("GET", "/readin/annotations?key=" + notes["pdf"])
+        b = next((x for x in body["annotations"] if x.get("key") == box_key), None)
+        check("box read back as an image annotation with the new thought and color, tags kept", b and b["type"] == "image" and b["comment"] == "改过的想法"
+              and b["color"] == "#ff6666" and b["position"]["rects"] == [box] and [t["name"] for t in b.get("tags", [])] == ["公式"], b)
+        status, body = z.call("POST", "/readin/annotations/save", {
+            "attachmentKey": notes["pdf"],
+            "annotation": {"type": "text", "comment": "页边写的字", "color": "#ffd400", "pageIndex": 0, "rects": [[300, 650, 420, 670]], "fontSize": 12},
+        })
+        check("create a text annotation (keeps its font size)", status == 200, (status, body))
+        status, body = z.call("GET", "/readin/annotations?key=" + notes["pdf"])
+        t = next((x for x in body["annotations"] if x["type"] == "text"), None)
+        check("text annotation read back with font size", t and t["comment"] == "页边写的字" and t["position"].get("fontSize") == 12, t)
+        status, body = z.call("POST", "/readin/annotations/delete", {"attachmentKey": notes["pdf"], "keys": [box_key, (t or {}).get("key", "")]})
+        check("delete box and text annotation", len(body.get("trashed", [])) == 2, body)
         bad_cases = [
             ({"type": "ink", "pageIndex": 0, "rects": [rect]}, "unsupported type"),
             ({"type": "highlight", "pageIndex": -1, "rects": [rect]}, "negative page"),
@@ -227,7 +253,7 @@ def main():
 
         print("notes with live citations (v0.5.0)")
         status, body = z.call("GET", "/readin/ping")
-        check("api 5", body.get("api") == 5, body)
+        check("api 6 (v0.6.0)", body.get("api") == 6, body)
         # a ReadIN highlight with the page number printed on the paper
         status, body = z.call("POST", "/readin/annotations/save", {
             "attachmentKey": notes["pdf"],
