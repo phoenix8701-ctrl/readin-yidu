@@ -23,8 +23,9 @@
 ## 三步装好
 
 1. **下载插件**：[点这里下载](https://readin.cc/yidu/readin-yidu.xpi)，电脑的「下载」文件夹里会多一个 `readin-yidu.xpi` 文件。在中国大陆从[这里下载](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi)更快。
-2. **拖进 Zotero**：打开 Zotero，点菜单「工具 → 插件」，把刚下载的文件拖进弹出来的窗口。列表里出现「ReadIN 译读」，就装好了。
+2. **装进 Zotero**：打开 Zotero，点菜单「工具 → 插件」，在弹出来的窗口右上角点齿轮 ⚙，选「从文件安装插件…」（英文界面叫 Install Plugin From File…），再选刚下载的 `readin-yidu.xpi`。列表里出现「ReadIN 译读」，就装好了。
    找不到「工具」？Mac 上它在屏幕最顶上那一排菜单里；Windows 上在 Zotero 窗口的顶上。
+   也可以把文件直接拖进那个窗口；拖不进去（鼠标变成 🚫，Windows 上 Zotero 用「以管理员身份运行」打开时会这样）就用齿轮装。插件要 Zotero 9 或 10，「帮助 → 关于 Zotero」能看版本。
 3. **打开 ReadIN**：用 Chrome 或 Edge 点[打开 ReadIN（AI 已配好）](https://beta.anqapdf.app/#ref=cze3sewgik)；在中国大陆点[打开大陆版](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero)。点最上面的「连接 Zotero」；Chrome 问能不能访问本机网络，点「允许」。
    Mac 上的 Safari 连不了 Zotero（Safari 不让网页连电脑上的 Zotero），请用 Chrome 或 Edge。
    以前用过 ReadIN？右上角选「文献」，书架上点「连接 Zotero」。
@@ -77,7 +78,7 @@ ReadIN 里左下角的「吐槽一下」也能直接写给我，我在后台看�
 **Set up in three steps**:
 
 1. [Download the plugin](https://readin.cc/yidu/readin-yidu.xpi). A file called `readin-yidu.xpi` lands in your Downloads folder.
-2. Open Zotero, choose Tools → Plugins from the menu, and drag the file into the window. When "ReadIN 译读" shows up in the list, it's installed.
+2. Open Zotero, choose Tools → Plugins from the menu, click the gear ⚙ at the top right of that window, choose Install Plugin From File…, and pick the `readin-yidu.xpi` you downloaded. When "ReadIN 译读" shows up in the list, it's installed. (You can also drag the file into the window; if it won't drop, which happens on Windows when Zotero runs as administrator, use the gear. The plugin needs Zotero 9 or 10; Help → About Zotero shows your version.)
 3. In Chrome or Edge, [open ReadIN with AI ready](https://beta.anqapdf.app/#ref=cze3sewgik). Click "Connect Zotero" at the top; when Chrome asks about your local network, click Allow. Safari on the Mac can't connect to Zotero (it doesn't let websites reach Zotero on your computer), so please use Chrome or Edge.
 
 Then open a paper either way: right-click it in your library and choose "Open in ReadIN", or, if you're already reading it in Zotero, click "ReadIN" at the right of the toolbar. In mainland China, use the [China version](https://cn-beta.anqapdf.app/#invite=CN-T294-ZYYF-E8P6&from=zotero) (AI by DeepSeek) and [download the plugin here](https://cn-beta.anqapdf.app/yidu/readin-yidu.xpi).
