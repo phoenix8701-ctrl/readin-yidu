@@ -1,5 +1,5 @@
 /* global Zotero, ReadINYidu */
-// "Open in ReadIN": right-click menu on a paper, and a button in the PDF reader's toolbar.
+// "Open in ReadIN": right-click menu on a paper, and a button in the reader's toolbar (PDF; v0.7.0 web snapshots too).
 
 ReadINYidu.ui = {
   menuID: null,
@@ -17,11 +17,11 @@ ReadINYidu.ui = {
           onShowing: (event, context) => {
             context.menuElem.setAttribute("label", Y.t("open"));
             const items = context.items || [];
-            context.setVisible(items.length === 1 && Y.pdfsOf(items[0]).length > 0);
+            context.setVisible(items.length === 1 && Boolean(Y.readable(items[0])));
           },
           onCommand: (event, context) => {
-            const pdf = Y.pdfsOf(context.items[0])[0];
-            if (pdf) Y.openInReadIN(pdf.key).catch((e) => Zotero.logError(e));
+            const att = Y.readable(context.items[0]);
+            if (att) Y.openInReadIN(att.key).catch((e) => Zotero.logError(e));
           },
         }],
       });
@@ -41,7 +41,7 @@ ReadINYidu.ui = {
   },
 
   renderToolbar({ reader, doc, append }) {
-    if (reader.type !== "pdf") return;
+    if (reader.type !== "pdf" && reader.type !== "snapshot") return;
     const Y = ReadINYidu;
     const button = doc.createElement("button");
     button.className = "toolbar-button readin-yidu-open";

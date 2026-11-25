@@ -12,6 +12,7 @@ on this computer (instead of readin.cc), and checks:
 """
 
 import json
+import re
 import sys
 import tempfile
 import threading
@@ -120,7 +121,8 @@ def main():
         print("1. ReadIN asks for an update")
         with TestZotero(port=23141, xpi=old_xpi, prefs=insecure) as z:
             ping = z.ping
-            check("old copy runs: 0.0.1, can update (api 5, update: true)", ping["version"] == "0.0.1" and ping["api"] == 5 and ping.get("update") is True, ping)
+            api = int(re.search(r"API: (\d+)", (REPO / "src" / "bridge.js").read_text()).group(1))  # 接口版本跟着插件走(0.7.0 是 7)
+            check(f"old copy runs: 0.0.1, can update (api {api}, update: true)", ping["version"] == "0.0.1" and ping["api"] == api and ping.get("update") is True, ping)
             status, _ = z.call("POST", "/readin/update", body="{}", origin="https://example.com")
             check("another website can't ask for an update", status == 403, status)
             status, body = z.call("POST", "/readin/update", body="{}")

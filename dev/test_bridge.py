@@ -35,7 +35,7 @@ def main():
 
         print("who may connect")
         status, body = z.call("GET", "/readin/ping")
-        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 6 and body.get("update") is True, body)
+        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 7 and body.get("update") is True, body)
         check("answer allows that page (CORS)", z.last_headers.get("Access-Control-Allow-Origin") == "https://beta.anqapdf.app", z.last_headers)
         for origin in ["https://cn-beta.anqapdf.app", "https://readin.cc"]:
             status, _ = z.call("GET", "/readin/ping", origin=origin)
@@ -253,7 +253,7 @@ def main():
 
         print("notes with live citations (v0.5.0)")
         status, body = z.call("GET", "/readin/ping")
-        check("api 6 (v0.6.0)", body.get("api") == 6, body)
+        check("api 7 (v0.7.0 web snapshots)", body.get("api") == 7, body)
         # a ReadIN highlight with the page number printed on the paper
         status, body = z.call("POST", "/readin/annotations/save", {
             "attachmentKey": notes["pdf"],
@@ -420,6 +420,28 @@ def main():
           return null;
         """ % pdf_item[1])
         check("open the PDF: ReadIN button in the reader toolbar", button == ["ReadIN", "在 ReadIN 打开"], button)
+
+        print("web snapshots (v0.7.0)")
+        snap = z.eval("""
+          const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Snapshot Test</title></head><body><article><h1>Snapshot Test</h1><p>' + 'Reading on the web. '.repeat(40) + '</p></article></body></html>';
+          const path = PathUtils.join(PathUtils.tempDir, 'readin-snapshot-test.html');
+          await IOUtils.writeUTF8(path, html);
+          const parent = new Zotero.Item('webpage'); parent.setField('title', 'A Saved Web Page'); await parent.saveTx();
+          const att = await Zotero.Attachments.importFromFile({ file: path, parentItemID: parent.id, contentType: 'text/html' });
+          return [parent.key, att.key, parent.id];""")
+        status, body = z.call("GET", f"/readin/item?key={snap[0]}")
+        check("paper with only a web snapshot: no pdf, the snapshot instead", status == 200 and body["pdf"] is None and (body.get("snapshot") or {}).get("key") == snap[1], body)
+        check("the paper lists its snapshot", [x["key"] for x in body["item"].get("snapshots", [])] == [snap[1]], body["item"])
+        status, body = z.call("GET", f"/readin/item?key={snap[1]}")
+        check("asking for the snapshot itself: that snapshot, under its paper", body["pdf"] is None and body["snapshot"]["key"] == snap[1] and body["item"]["key"] == snap[0], body)
+        status, body = z.call("GET", f"/readin/file?key={snap[1]}")
+        check("snapshot file: its HTML", status == 200 and b"Snapshot Test" in unb64(body["base64url"]), (status, body.get("filename") if isinstance(body, dict) else body))
+        status, body = z.call("GET", f"/readin/annotations?key={snap[1]}")
+        check("snapshot annotations: an empty list, not an error", status == 200 and body["annotations"] == [], (status, body))
+        status, body = z.call("GET", f"/readin/item?key={notes['item']}")
+        check("paper with a PDF: still a PDF, no snapshot", body.get("pdf") and body["pdf"]["key"] in [x["key"] for x in body["item"]["pdfs"]] and body.get("snapshot") is None, body)
+        shown = z.eval(menu_js.replace(f"selectItem({pdf_item[0]})", f"selectItem({snap[2]})"))
+        check("right-click a paper with only a snapshot: 在 ReadIN 打开", shown == ["在 ReadIN 打开"], shown)
 
         print("turning the plugin off removes the doors")
         z.eval("""

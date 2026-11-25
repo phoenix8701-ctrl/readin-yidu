@@ -121,6 +121,22 @@ ReadINYidu = {
     return Zotero.Items.get(item.getAttachments()).filter((a) => !a.deleted && this.isPDF(a));
   },
 
+  // v0.7.0: web snapshots (a saved web page, text/html, stored in Zotero; not a plain link to a URL)
+  isSnapshot(item) {
+    return item.isAttachment() && item.attachmentContentType === "text/html" && item.attachmentLinkMode !== Zotero.Attachments.LINK_MODE_LINKED_URL;
+  },
+
+  snapshotsOf(item) {
+    if (this.isSnapshot(item)) return [item];
+    if (!item.isRegularItem()) return [];
+    return Zotero.Items.get(item.getAttachments()).filter((a) => !a.deleted && this.isSnapshot(a));
+  },
+
+  // What "Open in ReadIN" opens for this item: its PDF, or else its web snapshot (v0.7.0)
+  readable(item) {
+    return this.pdfsOf(item)[0] || this.snapshotsOf(item)[0] || null;
+  },
+
   openInReadIN(attachmentKey) {
     return this.launch(`${this.site()}/#zotero=${encodeURIComponent(attachmentKey)}`);
   },

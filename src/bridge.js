@@ -10,11 +10,13 @@
 // - Zotero's server can only send text, so PDF bytes travel as base64url.
 
 ReadINYidu.bridge = {
-  API: 6, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
+  API: 7, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
   // 4 (v0.4.0): /readin/hello remembers the browser ReadIN is set up in, and "Open in ReadIN" opens that browser;
   // 5 (v0.5.0): notes with live Zotero citations (/readin/notes/save takes { doc }), a note the user edited is left alone
   // (sig), /readin/notes/remove, and a highlight saved again without a page label keeps the one it has;
-  // 6 (v0.6.0): ReadIN also shows Zotero's image (box) and text annotations and saves its edits to them
+  // 6 (v0.6.0): ReadIN also shows Zotero's image (box) and text annotations and saves its edits to them;
+  // 7 (v0.7.0): web snapshots: /readin/item says { snapshot } when there's no PDF (or the snapshot itself was asked for),
+  // /readin/file sends the snapshot's HTML, /readin/annotations answers [] for it (ReadIN's notes go into the "ReadIN 笔记" note)
   TAG: "ReadIN 译文",
   paths: [],
 
@@ -124,6 +126,7 @@ ReadINYidu.bridge = {
       collections: item.getCollections().map((id) => Zotero.Collections.get(id).key),
       dateModified: Zotero.Date.sqlToISO8601(item.dateModified),
       pdfs: Y.pdfsOf(item).map((a) => ({ key: a.key, filename: a.attachmentFilename, linkMode: a.attachmentLinkMode })),
+      snapshots: Y.snapshotsOf(item).map((a) => ({ key: a.key, filename: a.attachmentFilename })),
     };
   },
 
@@ -144,18 +147,24 @@ ReadINYidu.bridge = {
     return { items: items.map((i) => this.describe(i)) };
   },
 
-  // key may be a paper or one of its PDFs; "pdf" is the PDF to open.
+  // key may be a paper, one of its PDFs or (v0.7.0) one of its web snapshots. "pdf" is the PDF to open;
+  // "snapshot" is the web snapshot, sent when there is no PDF or the snapshot itself was asked for (then pdf is null).
   itemInfo(key) {
     const Y = ReadINYidu;
     const item = Y.item(key);
-    const paper = Y.isPDF(item) && item.parentItem ? item.parentItem : item;
-    const pdf = Y.isPDF(item) ? item : Y.pdfsOf(paper)[0] || null;
-    return { item: this.describe(paper), pdf: pdf && { key: pdf.key, filename: pdf.attachmentFilename } };
+    const paper = (Y.isPDF(item) || Y.isSnapshot(item)) && item.parentItem ? item.parentItem : item;
+    const pdf = Y.isPDF(item) ? item : Y.isSnapshot(item) ? null : Y.pdfsOf(paper)[0] || null;
+    const snapshot = Y.isSnapshot(item) ? item : pdf ? null : Y.snapshotsOf(paper)[0] || null;
+    return {
+      item: this.describe(paper),
+      pdf: pdf && { key: pdf.key, filename: pdf.attachmentFilename },
+      snapshot: snapshot && { key: snapshot.key, filename: snapshot.attachmentFilename },
+    };
   },
 
   async file(key) {
     const att = ReadINYidu.item(key);
-    if (!ReadINYidu.isPDF(att)) throw this.bad("not a PDF attachment");
+    if (!ReadINYidu.isPDF(att) && !ReadINYidu.isSnapshot(att)) throw this.bad("not a PDF or web snapshot attachment");
     const path = await att.getFilePathAsync();
     if (!path) {
       const e = new Error("file not on this computer");
@@ -168,6 +177,7 @@ ReadINYidu.bridge = {
 
   async annotations(key) {
     const att = ReadINYidu.item(key);
+    if (ReadINYidu.isSnapshot(att)) return { annotations: [] }; // v0.7.0: ReadIN doesn't read snapshot annotations yet
     if (!ReadINYidu.isPDF(att)) throw this.bad("not a PDF attachment");
     const list = [];
     for (const a of att.getAnnotations()) list.push(await Zotero.Annotations.toJSON(a));
