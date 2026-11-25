@@ -35,7 +35,7 @@ def main():
 
         print("who may connect")
         status, body = z.call("GET", "/readin/ping")
-        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 7 and body.get("update") is True, body)
+        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 8 and body.get("update") is True, body)
         check("answer allows that page (CORS)", z.last_headers.get("Access-Control-Allow-Origin") == "https://beta.anqapdf.app", z.last_headers)
         for origin in ["https://cn-beta.anqapdf.app", "https://readin.cc"]:
             status, _ = z.call("GET", "/readin/ping", origin=origin)
@@ -253,7 +253,7 @@ def main():
 
         print("notes with live citations (v0.5.0)")
         status, body = z.call("GET", "/readin/ping")
-        check("api 7 (v0.7.0 web snapshots)", body.get("api") == 7, body)
+        check("api 8 (v0.8.0 rename papers)", body.get("api") == 8, body)
         # a ReadIN highlight with the page number printed on the paper
         status, body = z.call("POST", "/readin/annotations/save", {
             "attachmentKey": notes["pdf"],
@@ -442,6 +442,35 @@ def main():
         check("paper with a PDF: still a PDF, no snapshot", body.get("pdf") and body["pdf"]["key"] in [x["key"] for x in body["item"]["pdfs"]] and body.get("snapshot") is None, body)
         shown = z.eval(menu_js.replace(f"selectItem({pdf_item[0]})", f"selectItem({snap[2]})"))
         check("right-click a paper with only a snapshot: 在 ReadIN 打开", shown == ["在 ReadIN 打开"], shown)
+
+        print("rename a paper from ReadIN (v0.8.0)")
+        plain = seeded["A Paper Without Its PDF"]
+        z.eval(f'''const item = Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{plain['item']}");
+          item.setCreators([...item.getCreators(), {{ firstName: "Eve", lastName: "Editor", creatorType: "editor" }}]); await item.saveTx(); return true;''')
+        fields = lambda key: z.eval(f'''const item = Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{key}");
+          return {{ title: item.getField("title"), date: item.getField("date"), journal: item.getField("publicationTitle"),
+            creators: item.getCreatorsJSON().map((c) => [c.creatorType, c.firstName || "", c.lastName || c.name || ""]) }};''')
+        status, body = z.call("POST", "/readin/item/update", {"key": plain["item"], "title": "  A Paper  With a Better Title "})
+        got = fields(plain["item"])
+        check("title only: written (spaces tidied), nothing else touched", status == 200 and body.get("changed") is True and got["title"] == "A Paper With a Better Title"
+              and got["date"] == "2020" and got["journal"] == "Nowhere Journal" and got["creators"] == [["author", "Dan", "Lee"], ["editor", "Eve", "Editor"]], (status, body, got))
+        check("answers the item like /readin/items (with its CSL)", body.get("item", {}).get("csl", {}).get("title") == "A Paper With a Better Title", body)
+        status, body = z.call("POST", "/readin/item/update", {"key": plain["item"], "creators": [{"firstName": "Dana", "lastName": "Lee"}, {"name": "Reading Lab"}], "date": "2021"})
+        got = fields(plain["item"])
+        check("authors and year: authors replaced, the editor stays", status == 200 and got["creators"] == [["author", "Dana", "Lee"], ["author", "", "Reading Lab"], ["editor", "Eve", "Editor"]]
+              and got["date"] == "2021" and got["title"] == "A Paper With a Better Title", got)
+        status, body = z.call("POST", "/readin/item/update", {"key": plain["item"], "title": "A Paper With a Better Title"})
+        check("same title again: nothing to save", status == 200 and body.get("changed") is False, body)
+        status, body = z.call("POST", "/readin/item/update", {"key": plain["item"], "title": "   "})
+        check("empty title refused", status == 400, (status, body))
+        status, body = z.call("POST", "/readin/item/update", {"key": "ZZZZ2345", "title": "x"})
+        check("unknown item: 404", status == 404, (status, body))
+        loose = seeded["standalone"]
+        status, body = z.call("POST", "/readin/item/update", {"key": loose["item"], "title": "A Loose PDF Renamed", "date": "1999"})
+        title = z.eval(f'return Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{loose["item"]}").getField("title")')
+        check("a PDF without a parent: just its title", status == 200 and title == "A Loose PDF Renamed", (status, body, title))
+        status, _ = z.call("POST", "/readin/item/update", {"key": plain["item"], "title": "Hacked"}, origin="https://evil.example.org")
+        check("other website can't rename", status == 403 and fields(plain["item"])["title"] == "A Paper With a Better Title", status)
 
         print("turning the plugin off removes the doors")
         z.eval("""

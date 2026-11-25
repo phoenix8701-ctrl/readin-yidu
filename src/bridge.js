@@ -10,13 +10,14 @@
 // - Zotero's server can only send text, so PDF bytes travel as base64url.
 
 ReadINYidu.bridge = {
-  API: 7, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
+  API: 8, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
   // 4 (v0.4.0): /readin/hello remembers the browser ReadIN is set up in, and "Open in ReadIN" opens that browser;
   // 5 (v0.5.0): notes with live Zotero citations (/readin/notes/save takes { doc }), a note the user edited is left alone
   // (sig), /readin/notes/remove, and a highlight saved again without a page label keeps the one it has;
   // 6 (v0.6.0): ReadIN also shows Zotero's image (box) and text annotations and saves its edits to them;
   // 7 (v0.7.0): web snapshots: /readin/item says { snapshot } when there's no PDF (or the snapshot itself was asked for),
-  // /readin/file sends the snapshot's HTML, /readin/annotations answers [] for it (ReadIN's notes go into the "ReadIN 笔记" note)
+  // /readin/file sends the snapshot's HTML, /readin/annotations answers [] for it (ReadIN's notes go into the "ReadIN 笔记" note);
+  // 8 (v0.8.0): /readin/item/update writes a renamed title (and fixed authors or year) back to the Zotero item
   TAG: "ReadIN 译文",
   paths: [],
 
@@ -43,6 +44,7 @@ ReadINYidu.bridge = {
     get("/readin/collections", () => ({ collections: this.collections() }));
     get("/readin/items", (q) => this.items(q.get("collection"), q.get("keys")));
     get("/readin/item", (q) => this.itemInfo(q.get("key")));
+    post("/readin/item/update", (body) => this.updateItem(body));
     get("/readin/file", (q) => this.file(q.get("key")));
     get("/readin/annotations", (q) => this.annotations(q.get("key")));
     post("/readin/annotations/save", (body) => this.saveAnnotation(body));
@@ -160,6 +162,50 @@ ReadINYidu.bridge = {
       pdf: pdf && { key: pdf.key, filename: pdf.attachmentFilename },
       snapshot: snapshot && { key: snapshot.key, filename: snapshot.attachmentFilename },
     };
+  },
+
+  // v0.8.0: the user renamed a paper in ReadIN (or fixed its authors or year in ReadIN's "reference" window).
+  // Only the fields sent are written: { key, title?, creators?: [{ firstName, lastName } | { name }], date? }.
+  // creators replaces only the item's main creators (authors for most types); editors, translators and the rest stay.
+  // A loose PDF (no parent item) only has a title. Answers the item the way /readin/items describes it.
+  async updateItem({ key, title, creators, date } = {}) {
+    const item = ReadINYidu.item(key);
+    const regular = item.isRegularItem();
+    if (!regular && !item.isAttachment()) throw this.bad("not a paper");
+    let changed = false;
+    if (title !== undefined) {
+      const text = String(title).replace(/\s+/g, " ").trim();
+      if (!text) throw this.bad("title is empty");
+      // Some types call their title something else (a case's "caseName", a law's "nameOfAct")
+      const titleID = Zotero.ItemFields.getID("title");
+      const field = Zotero.ItemFields.isValidForType(titleID, item.itemTypeID)
+        ? "title"
+        : Zotero.ItemFields.getFieldIDFromTypeAndBase(item.itemTypeID, "title") || "title";
+      if (item.getField(field) !== text) {
+        item.setField(field, text);
+        changed = true;
+      }
+    }
+    if (regular && Array.isArray(creators)) {
+      const main = Zotero.CreatorTypes.getPrimaryIDForType(item.itemTypeID);
+      const named = creators
+        .map((c) => (c && c.name
+          ? { name: String(c.name).trim(), fieldMode: 1, creatorTypeID: main }
+          : { firstName: String((c && c.firstName) || "").trim(), lastName: String((c && c.lastName) || "").trim(), fieldMode: 0, creatorTypeID: main }))
+        .filter((c) => c.name || c.lastName || c.firstName);
+      const others = item.getCreators().filter((c) => c.creatorTypeID !== main);
+      item.setCreators([...named, ...others]);
+      changed = true;
+    }
+    if (regular && date !== undefined) {
+      const text = String(date).trim();
+      if (item.getField("date") !== text) {
+        item.setField("date", text);
+        changed = true;
+      }
+    }
+    if (changed) await item.saveTx();
+    return { ok: true, changed, item: this.describe(item) };
   },
 
   async file(key) {
