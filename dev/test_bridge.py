@@ -410,6 +410,13 @@ def main():
         """)
         shown = z.eval(menu_js)
         check("plugin restarted (like after an update): still just one, no leftover copy", shown == ["在 ReadIN 打开"], shown)
+        # v0.8.1: the menu in Zotero's language: Traditional Chinese (Taiwan wording), Japanese, English
+        labels = z.eval("""const Y = Zotero.__readinYidu;
+          return ["zh-CN", "zh-TW", "zh-HK", "ja", "ja-JP", "en-US", "fr-FR"].map((l) => Y.t("open", l));""")
+        check("menu words by Zotero's language", labels == ["在 ReadIN 打开", "在 ReadIN 中開啟", "在 ReadIN 中開啟", "ReadIN で開く", "ReadIN で開く", "Open in ReadIN", "Open in ReadIN"], labels)
+        for locale, want in [("zh-TW", "在 ReadIN 中開啟"), ("ja", "ReadIN で開く"), ("en-US", "Open in ReadIN")]:
+            shown = z.eval("const saved = Zotero.locale; Zotero.locale = %s; try {%s} finally { Zotero.locale = saved; }" % (json.dumps(locale), menu_js))
+            check(f"right-click in a {locale} Zotero: {want}", shown == [want], shown)
         button = z.eval("""
           const reader = await Zotero.Reader.open(%d);
           for (let i = 0; i < 60; i++) {

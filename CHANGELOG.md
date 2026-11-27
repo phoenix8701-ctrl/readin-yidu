@@ -1,5 +1,12 @@
 # 更新记录
 
+## v0.8.1（2026-11-28）
+
+- **右键菜单也有繁体中文、日语了。** ReadIN v0.274 起界面有繁體中文和日本語，插件的菜单跟着 Zotero 自己的语言走：
+  繁体中文的 Zotero（台湾、香港）显示「在 ReadIN 中開啟」，日语的 Zotero 显示「ReadIN で開く」；简体中文照旧「在 ReadIN 打开」，别的语言照旧「Open in ReadIN」。
+  PDF 阅读器顶栏「ReadIN」按钮的提示也一样。以前繁体 Zotero 里显示的是简体字，日语 Zotero 里显示的是英文。功能没变，本机入口的接口版本还是 8。
+- 测试多四项：按 Zotero 的语言选字（zh-CN、zh-TW、zh-HK、ja、ja-JP、en-US、fr-FR），繁体、日语、英文 Zotero 里真的右键看菜单。
+
 ## v0.8.0（2026-11-25）
 
 - **在 ReadIN 里改论文名，Zotero 里也跟着改。** 用户说：Zotero 认出来的论文名有时不准，想在 ReadIN 里改，「能不能同步到 Zotero？还是只能回 Zotero 去改？」

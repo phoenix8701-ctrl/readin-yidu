@@ -22,8 +22,10 @@ ReadINYidu = {
   // (the international version's AI can't be reached from mainland China).
   CN_ZONES: ["Asia/Shanghai", "Asia/Chongqing", "Asia/Chungking", "Asia/Harbin", "Asia/Urumqi", "Asia/Kashgar", "PRC"],
 
+  // Words Zotero shows (the right-click menu, the reader button's tooltip), in Zotero's own language.
+  // v0.8.1: Traditional Chinese (Taiwan wording) and Japanese too; ReadIN v0.274 has interfaces in both and names the menu the same way.
   STRINGS: {
-    open: { zh: "在 ReadIN 打开", en: "Open in ReadIN" },
+    open: { zh: "在 ReadIN 打开", tw: "在 ReadIN 中開啟", ja: "ReadIN で開く", en: "Open in ReadIN" },
   },
 
   // v0.4.0: "Open in ReadIN" opens the browser you actually use ReadIN in, not just the computer's default browser
@@ -96,9 +98,18 @@ ReadINYidu = {
     return this.CN_ZONES.includes(tz) ? this.CN_SITE : this.DEFAULT_SITE;
   },
 
-  t(key) {
+  // Zotero's language → zh / tw / ja / en. Traditional Chinese: zh-TW (Zotero's own), also zh-HK, zh-MO, zh-Hant.
+  lang(locale = Zotero.locale) {
+    const code = String(locale || "").toLowerCase().replace(/_/g, "-");
+    if (/^zh-(tw|hk|mo|hant)\b/.test(code)) return "tw";
+    if (code.startsWith("zh")) return "zh";
+    if (code.startsWith("ja")) return "ja";
+    return "en";
+  },
+
+  t(key, locale) {
     const s = this.STRINGS[key];
-    return String(Zotero.locale || "").toLowerCase().startsWith("zh") ? s.zh : s.en;
+    return s[this.lang(locale)] ?? s.en;
   },
 
   libraryID() {
