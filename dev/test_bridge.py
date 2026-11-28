@@ -35,7 +35,7 @@ def main():
 
         print("who may connect")
         status, body = z.call("GET", "/readin/ping")
-        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 8 and body.get("update") is True, body)
+        check("ReadIN page gets an answer", status == 200 and body["plugin"] == "readin-yidu" and body["api"] == 9 and body.get("update") is True, body)
         check("answer allows that page (CORS)", z.last_headers.get("Access-Control-Allow-Origin") == "https://beta.anqapdf.app", z.last_headers)
         for origin in ["https://cn-beta.anqapdf.app", "https://readin.cc"]:
             status, _ = z.call("GET", "/readin/ping", origin=origin)
@@ -253,7 +253,7 @@ def main():
 
         print("notes with live citations (v0.5.0)")
         status, body = z.call("GET", "/readin/ping")
-        check("api 8 (v0.8.0 rename papers)", body.get("api") == 8, body)
+        check("api 9 (v0.9.0 add papers from ReadIN; v0.8.0 rename papers)", body.get("api") == 9, body)
         # a ReadIN highlight with the page number printed on the paper
         status, body = z.call("POST", "/readin/annotations/save", {
             "attachmentKey": notes["pdf"],
@@ -478,6 +478,33 @@ def main():
         check("a PDF without a parent: just its title", status == 200 and title == "A Loose PDF Renamed", (status, body, title))
         status, _ = z.call("POST", "/readin/item/update", {"key": plain["item"], "title": "Hacked"}, origin="https://evil.example.org")
         check("other website can't rename", status == 403 and fields(plain["item"])["title"] == "A Paper With a Better Title", status)
+
+        print("adding a paper found from a reference (v0.9.0)")
+        csl = {"type": "article-journal", "title": "Deep learning", "container-title": "Nature", "author": [{"family": "LeCun", "given": "Yann"}, {"family": "Bengio", "given": "Yoshua"}],
+               "issued": {"date-parts": [[2015]]}}
+        z.eval("Zotero.__readinYidu.lastFind = null; return true;")
+        status, body = z.call("POST", "/readin/add", {"doi": "10.1038/nature14539", "csl": csl, "near": plain["item"]})
+        new_key = body.get("key", "")
+        added = z.eval(f'''const item = Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{new_key}");
+          return item ? {{ title: item.getField("title"), doi: item.getField("DOI"), journal: item.getField("publicationTitle"), date: item.getField("date"),
+            authors: item.getCreatorsJSON().map((c) => c.lastName), collections: item.getCollections().map((id) => Zotero.Collections.get(id).key),
+            type: Zotero.ItemTypes.getName(item.itemTypeID) }} : null;''') if new_key else None
+        check("new paper made from what ReadIN found (title, journal, year, authors, DOI)", status == 200 and body.get("exists") is False and added
+              and added["title"] == "Deep learning" and added["doi"] == "10.1038/nature14539" and added["journal"] == "Nature" and added["date"] == "2015"
+              and added["authors"] == ["LeCun", "Bengio"] and added["type"] == "journalArticle", (status, body, added))
+        check("put in the same collection as the paper being read", body.get("collection") is True and added and added["collections"] == [plain["collection"]], (body, added, plain["collection"]))
+        check("Zotero is asked to find its PDF", z.eval("return Zotero.__readinYidu.lastFind") == new_key, z.eval("return Zotero.__readinYidu.lastFind"))
+        status, body = z.call("POST", "/readin/add", {"doi": "https://doi.org/10.1038/NATURE14539", "csl": csl})
+        check("same DOI again (other case, as a link): already there, nothing added", status == 200 and body.get("exists") is True and body.get("key") == new_key, body)
+        status, body = z.call("POST", "/readin/add", {"doi": "10.5555/no-near-123", "csl": {"title": "A Paper Without a Home"}, "near": "ZZZZ2345"})
+        home = z.eval(f'return Zotero.Items.getByLibraryAndKey(Zotero.Libraries.userLibraryID, "{body.get("key", "")}")?.getCollections().length ?? -1')
+        check("unknown paper being read: added, just not in a collection", status == 200 and body.get("collection") is False and home == 0, (status, body, home))
+        status, body = z.call("POST", "/readin/add", {"doi": "not a doi", "csl": csl})
+        check("bad DOI refused", status == 400, (status, body))
+        status, body = z.call("POST", "/readin/add", {"doi": "10.5555/untitled-1", "csl": {"title": "  "}})
+        check("no title refused", status == 400, (status, body))
+        status, _ = z.call("POST", "/readin/add", {"doi": "10.5555/evil-1", "csl": {"title": "Spam"}}, origin="https://evil.example.org")
+        check("other website can't add", status == 403, status)
 
         print("turning the plugin off removes the doors")
         z.eval("""

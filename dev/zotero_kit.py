@@ -74,6 +74,8 @@ class TestZotero:
             "extensions.readin-yidu.testHooks": True,
             # The plugin checks readin.cc for a newer version when Zotero starts; not in tests (test_update.py turns it on).
             "extensions.readin-yidu.checkOnStart": False,
+            # "Add to Zotero" (v0.9.0) would ask Zotero to find the PDF online; not in tests (the plugin notes the item instead)
+            "extensions.readin-yidu.findPdf": False,
             **self.extra_prefs,
         }
         (profile / "user.js").write_text(

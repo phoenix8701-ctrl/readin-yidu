@@ -10,7 +10,7 @@
 // - Zotero's server can only send text, so PDF bytes travel as base64url.
 
 ReadINYidu.bridge = {
-  API: 8, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
+  API: 9, // 2 (v0.2.0): translated PDFs saved back as attachments; 3 (v0.3.0): ReadIN can ask for an update (/readin/update);
   // 4 (v0.4.0): /readin/hello remembers the browser ReadIN is set up in, and "Open in ReadIN" opens that browser;
   // 5 (v0.5.0): notes with live Zotero citations (/readin/notes/save takes { doc }), a note the user edited is left alone
   // (sig), /readin/notes/remove, and a highlight saved again without a page label keeps the one it has;
@@ -18,6 +18,7 @@ ReadINYidu.bridge = {
   // 7 (v0.7.0): web snapshots: /readin/item says { snapshot } when there's no PDF (or the snapshot itself was asked for),
   // /readin/file sends the snapshot's HTML, /readin/annotations answers [] for it (ReadIN's notes go into the "ReadIN 笔记" note);
   // 8 (v0.8.0): /readin/item/update writes a renamed title (and fixed authors or year) back to the Zotero item
+  // 9 (v0.9.0): /readin/add adds a paper found from a reference in ReadIN (by DOI, with the CSL ReadIN found) and finds its PDF
   TAG: "ReadIN 译文",
   paths: [],
 
@@ -57,6 +58,8 @@ ReadINYidu.bridge = {
     post("/readin/open", (body) => this.open(body));
     // v0.3.0: ReadIN found the plugin too old → update now through Zotero's add-on manager (updater.js)
     post("/readin/update", () => Y.updater.check({ manual: true }));
+    // v0.9.0: a paper found from a reference in ReadIN goes into Zotero
+    post("/readin/add", (body) => this.addPaper(body));
   },
 
   stop() {
@@ -206,6 +209,59 @@ ReadINYidu.bridge = {
     }
     if (changed) await item.saveTx();
     return { ok: true, changed, item: this.describe(item) };
+  },
+
+  // v0.9.0: ReadIN's reference card ("Look it up") found a paper the user is reading about, and they asked to add it to Zotero.
+  // { doi, csl, near }: a paper with this DOI already in the library is answered { exists: true } and nothing is added;
+  // otherwise a new item is made from the CSL ReadIN found (Crossref / OpenAlex), put in the collections of the paper being read
+  // (near, its Zotero key), and Zotero's own "Find Available PDF" runs in the background with the user's library access.
+  async addPaper({ doi, csl, near } = {}) {
+    const Y = ReadINYidu;
+    const clean = String(doi || "").trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").replace(/^doi:\s*/i, "");
+    if (!/^10\.\d{4,9}\/\S+$/.test(clean)) throw this.bad("bad doi");
+    const libraryID = Y.libraryID();
+    const found = await this.findByDoi(libraryID, clean);
+    if (found) return { ok: true, exists: true, key: found.key, title: found.getDisplayTitle() };
+    if (!csl || typeof csl !== "object" || !String(csl.title || "").trim()) throw this.bad("no title");
+    const item = new Zotero.Item();
+    item.libraryID = libraryID;
+    Zotero.Utilities.Item.itemFromCSLJSON(item, { type: "article-journal", ...csl, DOI: clean });
+    let collections = [];
+    if (near) {
+      try {
+        const paper = Y.item(String(near));
+        const top = paper.isAttachment() && paper.parentItem ? paper.parentItem : paper;
+        collections = top.getCollections();
+      } catch (e) {
+        collections = [];
+      }
+    }
+    if (collections.length) item.setCollections(collections);
+    await item.saveTx();
+    this.findPdf(item);
+    return { ok: true, exists: false, key: item.key, title: item.getDisplayTitle(), collection: collections.length > 0 };
+  },
+
+  // DOIs are case-insensitive: search loosely, then compare in lower case
+  async findByDoi(libraryID, doi) {
+    const s = new Zotero.Search();
+    s.libraryID = libraryID;
+    s.addCondition("DOI", "contains", doi);
+    const items = await Zotero.Items.getAsync(await s.search());
+    const want = doi.toLowerCase();
+    return items.find((i) => i.isRegularItem() && !i.deleted && String(i.getField("DOI") || "").trim().toLowerCase() === want) || null;
+  },
+
+  // Zotero's "Find Available PDF" (Zotero 7+: addAvailableFile; older: addAvailablePDF). Tests turn it off (no network).
+  findPdf(item) {
+    const Y = ReadINYidu;
+    if (!Y.pref("findPdf", true)) {
+      if (Y.pref("testHooks", false)) Y.lastFind = item.key;
+      return;
+    }
+    const A = Zotero.Attachments;
+    const run = A.addAvailableFile || A.addAvailablePDF;
+    if (run) Promise.resolve(run.call(A, item)).catch((e) => Zotero.logError(e));
   },
 
   async file(key) {
