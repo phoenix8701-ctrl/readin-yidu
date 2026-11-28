@@ -100,6 +100,7 @@ Then open a paper either way: right-click it in your library and choose "Open in
 - `src/bridge.js`：本机入口（列分类和论文、拿 PDF、读写高亮、写笔记）。
 - `src/ui.js`：右键菜单和阅读器按钮。
 - `python3 dev/test_bridge.py`：在一个隔开的测试用文献库里跑全部测试（不碰你平时用的那个）。
+- `python3 dev/test_toolbar_button.py`：阅读器顶栏的「ReadIN」按钮（插件启动前已经开着的 PDF、Zotero 重开时恢复的标签页，前面有个启动慢的插件 `dev/slow-plugin`；约 25 秒）。`dev/test_update.py`：插件自己更新。
 - `python3 build.py`：打包成 `dist/readin-yidu-x.y.z.xpi` 和 `dist/update.json`。
 
 本机入口的规则（2026-11-16 在 Zotero 10 + Chrome 157 上确认）：

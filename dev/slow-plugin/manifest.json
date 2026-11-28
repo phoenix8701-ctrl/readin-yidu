@@ -1,0 +1,13 @@
+{
+  "manifest_version": 2,
+  "name": "Slow plugin (tests only, never shipped): takes 8 seconds to start, like a big plugin",
+  "version": "0.0.1",
+  "applications": {
+    "zotero": {
+      "id": "yidu-slow-test@readin.cc",
+      "update_url": "https://example.invalid/none.json",
+      "strict_min_version": "8.0",
+      "strict_max_version": "10.*"
+    }
+  }
+}
